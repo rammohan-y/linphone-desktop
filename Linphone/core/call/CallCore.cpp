@@ -29,6 +29,27 @@
 #include "tool/thread/SafeConnection.hpp"
 
 #include <QQuickWindow>
+#include <linphone++/player.hh>
+#include <linphone++/player_listener.hh>
+
+class CallFilePlayerListener : public linphone::PlayerListener {
+public:
+	CallFilePlayerListener(CallCore *core, QSharedPointer<SafeConnection<CallCore, CallModel>> connection)
+	    : mCore(core), mConnection(connection) {
+	}
+	void onEofReached(const std::shared_ptr<linphone::Player> &player) override {
+		player->close();
+		if (auto connection = mConnection.lock()) {
+			connection->invokeToCore([core = mCore]() {
+				if (core) emit core->filePlayFinished();
+			});
+		}
+	}
+
+private:
+	QPointer<CallCore> mCore;
+	QWeakPointer<SafeConnection<CallCore, CallModel>> mConnection;
+};
 
 DEFINE_ABSTRACT_OBJECT(CallCore)
 
@@ -212,6 +233,53 @@ void CallCore::setSelf(QSharedPointer<CallCore> me) {
 	});
 	mCallModelConnection->makeConnectToCore(&CallCore::lStopRecording, [this]() {
 		mCallModelConnection->invokeToModel([this]() { mCallModel->stopRecording(); });
+	});
+	mCallModelConnection->makeConnectToCore(&CallCore::lPlayFile, [this](QString filePath) {
+		mCallModelConnection->invokeToModel([this, filePath]() {
+			auto call = mCallModel->getMonitor();
+			if (!call) return;
+			auto player = call->getPlayer();
+			if (!player) return;
+			player->close();
+			auto filePathStd = Utils::appStringToCoreString(filePath);
+			auto status = player->open(filePathStd);
+			if (status == 0) {
+				auto listener = std::make_shared<CallFilePlayerListener>(this, mCallModelConnection);
+				player->addListener(listener);
+				mFilePlayerListener = listener;
+				player->start();
+				lDebug() << "[CallCore] Playing file into call:" << filePath;
+			} else {
+				lWarning() << "[CallCore] Failed to open file:" << filePath;
+			}
+			// Local monitoring: play the same file through the speaker
+			if (mLocalMonitorPlayer) mLocalMonitorPlayer->close();
+			auto core = CoreModel::getInstance()->getCore();
+			mLocalMonitorPlayer = core->createLocalPlayer("", "", nullptr);
+			if (mLocalMonitorPlayer) {
+				if (mLocalMonitorPlayer->open(filePathStd) == 0) {
+					mLocalMonitorPlayer->start();
+				}
+			}
+		});
+	});
+	mCallModelConnection->makeConnectToCore(&CallCore::lStopFilePlay, [this]() {
+		mCallModelConnection->invokeToModel([this]() {
+			auto call = mCallModel->getMonitor();
+			if (!call) return;
+			auto player = call->getPlayer();
+			if (player) {
+				if (mFilePlayerListener) {
+					player->removeListener(mFilePlayerListener);
+					mFilePlayerListener = nullptr;
+				}
+				player->close();
+			}
+			if (mLocalMonitorPlayer) {
+				mLocalMonitorPlayer->close();
+				mLocalMonitorPlayer = nullptr;
+			}
+		});
 	});
 	mCallModelConnection->makeConnectToModel(
 	    &CallModel::recordingChanged, [this](const std::shared_ptr<linphone::Call> &call, bool recording) {

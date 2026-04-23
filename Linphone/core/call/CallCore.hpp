@@ -279,6 +279,7 @@ signals:
 	void audioStatsChanged();
 	void videoStatsChanged();
 	void remoteNameChanged();
+	void filePlayFinished();
 
 	// Linphone commands
 	void lAccept(bool withVideo); // Accept an incoming call
@@ -301,6 +302,8 @@ signals:
 	void lSetConferenceVideoLayout(LinphoneEnums::ConferenceLayout layout);
 	void lSetVideoSourceDescriptor(VideoSourceDescriptorGui *gui);
 	void lSendDtmf(QString dtmf);
+	void lPlayFile(QString filePath);
+	void lStopFilePlay();
 
 	/* TODO
 	    Q_INVOKABLE void acceptWithVideo();
@@ -361,6 +364,8 @@ private:
 	AudioStats mAudioStats;
 	VideoStats mVideoStats;
 	std::shared_ptr<MagicSearchModel> mRemoteMagicSearchModel;
+	std::shared_ptr<linphone::PlayerListener> mFilePlayerListener;
+	std::shared_ptr<linphone::Player> mLocalMonitorPlayer;
 	bool mShouldFindRemoteFriend;
 	QSharedPointer<SafeConnection<CallCore, MagicSearchModel>> mRemoteMagicSearchModelConnection;
 

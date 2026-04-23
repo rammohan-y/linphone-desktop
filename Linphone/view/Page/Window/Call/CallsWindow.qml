@@ -2,6 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
 import QtQuick.Controls.Basic as Control
+import QtQuick.Dialogs
+import Qt.labs.folderlistmodel
 import Linphone
 import EnumsToStringCpp
 import UtilsCpp
@@ -771,6 +773,9 @@ AbstractWindow {
                                     //: "Partage de votre écran"
                                     rightPanel.headerTitleText = qsTr("conference_action_screen_sharing")
                                 }
+                                else if (rightPanel.contentLoader.item.objectName === "audioPlayerPanel") {
+                                    rightPanel.headerTitleText = "Audio Player"
+                                }
                                 else if (rightPanel.contentLoader.item.objectName === "encryptionPanel") {
                                     //: Chiffrement
                                     rightPanel.headerTitleText = qsTr("call_encryption_title")
@@ -1158,6 +1163,206 @@ AbstractWindow {
                             // Check if component is ready as well so we can reopen the panel after starting sharing screen
                             // and change shared window or screen if needed
                             if (isLocalScreenSharing && status === Component.Ready) rightPanel.visible = false
+                        }
+                    }
+                }
+            }
+            Component {
+                id: audioPlayerPanel
+                Control.Control {
+                    id: audioPlayerControl
+                    objectName: "audioPlayerPanel"
+                    width: parent.width
+                    Keys.onEscapePressed: event => {
+                        rightPanel.visible = false
+                        event.accepted = true
+                    }
+
+                    property string selectedFolder: SettingsCpp.audioPlayerFolder || ""
+                    property int currentPlayingIndex: -1
+                    property bool isRunningAll: false
+                    property int delaySeconds: 5
+                    property bool isPlaying: currentPlayingIndex >= 0
+
+                    Component.onCompleted: {
+                        if (selectedFolder.length > 0) {
+                            wavFolderModel.folder = "file://" + selectedFolder
+                        }
+                    }
+
+                    FolderDialog {
+                        id: audioFolderDialog
+                        title: "Select WAV folder"
+                        onAccepted: {
+                            audioPlayerControl.selectedFolder = Utils.getSystemPathFromUri(audioFolderDialog.selectedFolder)
+                            wavFolderModel.folder = audioFolderDialog.selectedFolder
+                        }
+                    }
+
+                    FolderListModel {
+                        id: wavFolderModel
+                        nameFilters: ["*.wav"]
+                        showDirs: false
+                        sortField: FolderListModel.Name
+                    }
+
+                    Timer {
+                        id: runAllTimer
+                        interval: audioPlayerControl.delaySeconds * 1000
+                        repeat: false
+                        onTriggered: {
+                            if (audioPlayerControl.isRunningAll && audioPlayerControl.currentPlayingIndex < wavFolderModel.count - 1) {
+                                audioPlayerControl.currentPlayingIndex++
+                                var fp = Utils.getSystemPathFromUri(wavFolderModel.get(audioPlayerControl.currentPlayingIndex, "filePath"))
+                                if (mainWindow.call) mainWindow.call.core.lPlayFile(fp)
+                            } else {
+                                audioPlayerControl.isRunningAll = false
+                                audioPlayerControl.currentPlayingIndex = -1
+                            }
+                        }
+                    }
+
+                    Connections {
+                        target: mainWindow.call ? mainWindow.call.core : null
+                        function onFilePlayFinished() {
+                            if (audioPlayerControl.isRunningAll) {
+                                runAllTimer.start()
+                            } else {
+                                audioPlayerControl.currentPlayingIndex = -1
+                            }
+                        }
+                    }
+
+                    ColumnLayout {
+                        width: parent.width
+                        height: rightPanel.contentItemHeight
+                        spacing: Utils.getSizeWithScreenRatio(10)
+
+                        Text {
+                            text: "Audio Player"
+                            color: DefaultStyle.main2_600
+                            font {
+                                pixelSize: Utils.getSizeWithScreenRatio(16)
+                                weight: 600
+                            }
+                            Layout.fillWidth: true
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Utils.getSizeWithScreenRatio(8)
+                            Button {
+                                Layout.fillWidth: true
+                                text: audioPlayerControl.selectedFolder || "Select Folder"
+                                icon.source: AppIcons.filePlus
+                                style: ButtonStyle.secondary
+                                enabled: !audioPlayerControl.isPlaying
+                                onClicked: audioFolderDialog.open()
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Utils.getSizeWithScreenRatio(8)
+                            visible: wavFolderModel.count > 0
+                            Button {
+                                text: audioPlayerControl.isRunningAll ? "Stop All" : "Run All"
+                                icon.source: audioPlayerControl.isRunningAll ? AppIcons.stopFill : AppIcons.playFill
+                                style: ButtonStyle.secondary
+                                onClicked: {
+                                    if (audioPlayerControl.isRunningAll) {
+                                        audioPlayerControl.isRunningAll = false
+                                        runAllTimer.stop()
+                                        if (mainWindow.call) mainWindow.call.core.lStopFilePlay()
+                                        audioPlayerControl.currentPlayingIndex = -1
+                                    } else {
+                                        audioPlayerControl.isRunningAll = true
+                                        audioPlayerControl.currentPlayingIndex = 0
+                                        var fp = Utils.getSystemPathFromUri(wavFolderModel.get(0, "filePath"))
+                                        if (mainWindow.call) mainWindow.call.core.lPlayFile(fp)
+                                    }
+                                }
+                            }
+                            Text {
+                                text: "Delay:"
+                                color: DefaultStyle.main2_600
+                                font.pixelSize: Utils.getSizeWithScreenRatio(13)
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            Control.SpinBox {
+                                id: delaySpinBox
+                                from: 1
+                                to: 30
+                                value: 5
+                                onValueChanged: audioPlayerControl.delaySeconds = value
+                            }
+                            Text {
+                                text: "sec"
+                                color: DefaultStyle.main2_600
+                                font.pixelSize: Utils.getSizeWithScreenRatio(13)
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+
+                        ListView {
+                            id: wavFileList
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+                            model: wavFolderModel
+                            spacing: Utils.getSizeWithScreenRatio(4)
+                            Control.ScrollBar.vertical: Control.ScrollBar {
+                                policy: Control.ScrollBar.AsNeeded
+                            }
+                            delegate: Rectangle {
+                                required property string fileName
+                                required property string filePath
+                                required property int index
+                                width: wavFileList.width
+                                height: Utils.getSizeWithScreenRatio(40)
+                                radius: Utils.getSizeWithScreenRatio(8)
+                                color: audioPlayerControl.currentPlayingIndex === index
+                                    ? DefaultStyle.main2_100
+                                    : (hoverArea.containsMouse ? DefaultStyle.grey_100 : "transparent")
+                                border.color: DefaultStyle.grey_200
+                                border.width: 1
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: Utils.getSizeWithScreenRatio(8)
+                                    anchors.rightMargin: Utils.getSizeWithScreenRatio(8)
+                                    spacing: Utils.getSizeWithScreenRatio(8)
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: fileName
+                                        color: DefaultStyle.main2_600
+                                        font.pixelSize: Utils.getSizeWithScreenRatio(12)
+                                        elide: Text.ElideRight
+                                    }
+                                    Button {
+                                        Layout.preferredWidth: Utils.getSizeWithScreenRatio(32)
+                                        Layout.preferredHeight: Utils.getSizeWithScreenRatio(32)
+                                        icon.source: audioPlayerControl.currentPlayingIndex === index
+                                            ? AppIcons.stopFill : AppIcons.playFill
+                                        style: ButtonStyle.noBackground
+                                        onClicked: {
+                                            if (audioPlayerControl.currentPlayingIndex === index) {
+                                                if (mainWindow.call) mainWindow.call.core.lStopFilePlay()
+                                                audioPlayerControl.currentPlayingIndex = -1
+                                            } else {
+                                                audioPlayerControl.isRunningAll = false
+                                                audioPlayerControl.currentPlayingIndex = index
+                                                if (mainWindow.call) mainWindow.call.core.lPlayFile(Utils.getSystemPathFromUri(filePath))
+                                            }
+                                        }
+                                    }
+                                }
+                                MouseArea {
+                                    id: hoverArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    acceptedButtons: Qt.NoButton
+                                }
+                            }
                         }
                     }
                 }
@@ -1792,6 +1997,19 @@ AbstractWindow {
                                 }
                                 KeyNavigation.up: visibleChildren.length != 0 ? moreOptionsButton.getPreviousItem(2) : null
                                 KeyNavigation.down: visibleChildren.length != 0 ? moreOptionsButton.getNextItem(2) : null
+                            }
+                            IconLabelButton {
+                                Layout.fillWidth: true
+                                icon.source: AppIcons.waveform
+                                text: "Audio Player"
+                                icon.width: Utils.getSizeWithScreenRatio(32)
+                                icon.height: Utils.getSizeWithScreenRatio(32)
+                                style: ButtonStyle.noBackground
+                                onClicked: {
+                                    rightPanel.visible = true
+                                    rightPanel.replace(audioPlayerPanel)
+                                    moreOptionsButton.close()
+                                }
                             }
                             IconLabelButton {
                                 Layout.fillWidth: true

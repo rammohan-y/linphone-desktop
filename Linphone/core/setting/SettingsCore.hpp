@@ -44,6 +44,8 @@ public:
 	Q_PROPERTY(bool autoDownloadReceivedFiles READ getAutoDownloadReceivedFiles WRITE setAutoDownloadReceivedFiles
 	               NOTIFY autoDownloadReceivedFilesChanged)
 	Q_PROPERTY(QString downloadFolder READ getDownloadFolder WRITE setDownloadFolder NOTIFY downloadFolderChanged)
+	Q_PROPERTY(
+	    QString audioPlayerFolder READ getAudioPlayerFolder WRITE setAudioPlayerFolder NOTIFY audioPlayerFolderChanged)
 	Q_PROPERTY(bool displayNotificationContent READ getDisplayNotificationContent WRITE setDisplayNotificationContent
 	               NOTIFY displayNotificationContentChanged)
 	Q_PROPERTY(
@@ -158,6 +160,9 @@ public:
 
 	QString getDownloadFolder() const;
 	void setDownloadFolder(QString folder);
+
+	QString getAudioPlayerFolder() const;
+	void setAudioPlayerFolder(QString folder);
 
 	bool getDisplayNotificationContent() {
 		return mDisplayNotificationContent;
@@ -326,6 +331,7 @@ signals:
 	void echoCancellationEnabledChanged();
 	void autoDownloadReceivedFilesChanged();
 	void downloadFolderChanged();
+	void audioPlayerFolderChanged();
 	void displayNotificationContentChanged();
 
 	void showPastMeetingsChanged();
@@ -427,6 +433,7 @@ private:
 	bool mEchoCancellationEnabled;
 	bool mAutoDownloadReceivedFiles;
 	QString mDownloadFolder;
+	QString mAudioPlayerFolder;
 	bool mDisplayNotificationContent;
 	bool mAutomaticallyRecordCallsEnabled;
 

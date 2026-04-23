@@ -1026,6 +1026,7 @@ void SettingsModel::notifyConfigReady(){
 	DEFINE_NOTIFY_CONFIG_READY(syncLdapContacts, SyncLdapContacts)
 	DEFINE_NOTIFY_CONFIG_READY(configLocale, ConfigLocale)
 	DEFINE_NOTIFY_CONFIG_READY(downloadFolder, DownloadFolder)
+	DEFINE_NOTIFY_CONFIG_READY(audioPlayerFolder, AudioPlayerFolder)
 	DEFINE_NOTIFY_CONFIG_READY(shortcutCount, ShortcutCount)
 	DEFINE_NOTIFY_CONFIG_READY(shortcuts, Shortcuts)
 	DEFINE_NOTIFY_CONFIG_READY(usernameOnlyForLdapLookupsInCalls, UsernameOnlyForLdapLookupsInCalls)
@@ -1141,6 +1142,11 @@ DEFINE_GETSET_CONFIG_STRING(SettingsModel,
 							downloadFolder,
 							DownloadFolder,
 							"download_folder",
+							"")
+DEFINE_GETSET_CONFIG_STRING(SettingsModel,
+							audioPlayerFolder,
+							AudioPlayerFolder,
+							"audio_player_folder",
 							"")
 DEFINE_GETSET_CONFIG(SettingsModel,
 						int,

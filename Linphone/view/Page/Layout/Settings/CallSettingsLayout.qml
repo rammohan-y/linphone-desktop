@@ -94,6 +94,38 @@ AbstractSettingsLayout {
 			RowLayout {
 				ColumnLayout {
 					Text {
+						text: "Audio player folder"
+						font: Typography.p2l
+						Layout.fillWidth: true
+					}
+					Text {
+						text: SettingsCpp.audioPlayerFolder.length !== 0 ? SettingsCpp.audioPlayerFolder : "Not configured"
+						font {
+							pixelSize: Typography.p1.pixelSize
+							italic: true
+						}
+						color: DefaultStyle.main2_600
+						Layout.fillWidth: true
+					}
+				}
+				Item { Layout.fillWidth: true }
+				RoundButton {
+					style: ButtonStyle.noBackground
+					icon.source: AppIcons.arrowSquareOut
+					onClicked: audioPlayerFolderDialog.open()
+					Accessible.name: "Choose audio player folder"
+				}
+			}
+			FolderDialog {
+				id: audioPlayerFolderDialog
+				title: "Select audio player folder"
+				onAccepted: {
+					SettingsCpp.audioPlayerFolder = Utils.getSystemPathFromUri(selectedFolder)
+				}
+			}
+			RowLayout {
+				ColumnLayout {
+					Text {
 						//: "Change ringtone"
 						text: qsTr("settings_calls_change_ringtone_title")
 						font: Typography.p2l

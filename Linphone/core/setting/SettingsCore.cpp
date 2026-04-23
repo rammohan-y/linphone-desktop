@@ -144,6 +144,7 @@ SettingsCore::SettingsCore(QObject *parent) : QObject(parent) {
 	INIT_CORE_MEMBER(SyncLdapContacts, settingsModel)
 	INIT_CORE_MEMBER(ConfigLocale, settingsModel)
 	INIT_CORE_MEMBER(DownloadFolder, settingsModel)
+	INIT_CORE_MEMBER(AudioPlayerFolder, settingsModel)
 
 	INIT_CORE_MEMBER(ShortcutCount, settingsModel)
 	INIT_CORE_MEMBER(Shortcuts, settingsModel)
@@ -228,6 +229,7 @@ SettingsCore::SettingsCore(const SettingsCore &settingsCore) {
 	mAutoStart = settingsCore.mAutoStart;
 	mConfigLocale = settingsCore.mConfigLocale;
 	mDownloadFolder = settingsCore.mDownloadFolder;
+	mAudioPlayerFolder = settingsCore.mAudioPlayerFolder;
 	mShortcutCount = settingsCore.mShortcutCount;
 	mShortcuts = settingsCore.mShortcuts;
 	mCallToneIndicationsEnabled = settingsCore.mCallToneIndicationsEnabled;
@@ -344,6 +346,7 @@ void SettingsCore::reloadSettings() {
 	setSyncLdapContacts(settingsModel->getSyncLdapContacts());
 	setConfigLocale(settingsModel->getConfigLocale());
 	setDownloadFolder(settingsModel->getDownloadFolder());
+	setAudioPlayerFolder(settingsModel->getAudioPlayerFolder());
 
 	setCallToneIndicationsEnabled(settingsModel->getCallToneIndicationsEnabled());
 	setCommandLine(settingsModel->getCommandLine());
@@ -421,6 +424,12 @@ void SettingsCore::setSelf(QSharedPointer<SettingsCore> me) {
 	mSettingsModelConnection->makeConnectToModel(&SettingsModel::downloadFolderChanged, [this](const QString &folder) {
 		mSettingsModelConnection->invokeToCore([this, folder]() { setDownloadFolder(folder); });
 	});
+
+	// Audio player folder
+	mSettingsModelConnection->makeConnectToModel(
+	    &SettingsModel::audioPlayerFolderChanged, [this](const QString &folder) {
+		    mSettingsModelConnection->invokeToCore([this, folder]() { setAudioPlayerFolder(folder); });
+	    });
 
 	// Auto recording
 	mSettingsModelConnection->makeConnectToModel(
@@ -617,6 +626,8 @@ void SettingsCore::setSelf(QSharedPointer<SettingsCore> me) {
 	                           configLocale, ConfigLocale)
 	DEFINE_CORE_GET_CONNECT(mSettingsModelConnection, SettingsCore, SettingsModel, settingsModel, QString,
 	                        downloadFolder, DownloadFolder)
+	DEFINE_CORE_GET_CONNECT(mSettingsModelConnection, SettingsCore, SettingsModel, settingsModel, QString,
+	                        audioPlayerFolder, AudioPlayerFolder)
 	DEFINE_CORE_GET_CONNECT(mSettingsModelConnection, SettingsCore, SettingsModel, settingsModel, int, shortcutCount,
 	                        ShortcutCount)
 	DEFINE_CORE_GET_CONNECT(mSettingsModelConnection, SettingsCore, SettingsModel, settingsModel, QVariantList,
@@ -727,6 +738,7 @@ void SettingsCore::reset(const SettingsCore &settingsCore) {
 	setAutoStart(settingsCore.mAutoStart);
 	setConfigLocale(settingsCore.mConfigLocale);
 	setDownloadFolder(settingsCore.mDownloadFolder);
+	setAudioPlayerFolder(settingsCore.mAudioPlayerFolder);
 	setCallForwardToAddress(settingsCore.mCallForwardToAddress);
 }
 
@@ -1285,6 +1297,18 @@ void SettingsCore::setDownloadFolder(QString folder) {
 	}
 }
 
+QString SettingsCore::getAudioPlayerFolder() const {
+	return mAudioPlayerFolder;
+}
+
+void SettingsCore::setAudioPlayerFolder(QString folder) {
+	if (mAudioPlayerFolder != folder) {
+		mAudioPlayerFolder = folder;
+		emit audioPlayerFolderChanged();
+		setIsSaved(false);
+	}
+}
+
 void SettingsCore::writeIntoModel(std::shared_ptr<SettingsModel> model) const {
 	mustBeInLinphoneThread(getClassName() + Q_FUNC_INFO);
 	// Security
@@ -1353,6 +1377,7 @@ void SettingsCore::writeIntoModel(std::shared_ptr<SettingsModel> model) const {
 	model->setAutoStart(mAutoStart);
 	model->setConfigLocale(mConfigLocale);
 	model->setDownloadFolder(mDownloadFolder);
+	model->setAudioPlayerFolder(mAudioPlayerFolder);
 	model->setCallForwardToAddress(mCallForwardToAddress);
 }
 
@@ -1441,6 +1466,7 @@ void SettingsCore::writeFromModel(const std::shared_ptr<SettingsModel> &model) {
 	mAutoStart = model->getAutoStart();
 	mConfigLocale = model->getConfigLocale();
 	mDownloadFolder = model->getDownloadFolder();
+	mAudioPlayerFolder = model->getAudioPlayerFolder();
 	mCallForwardToAddress = model->getCallForwardToAddress();
 }
 
