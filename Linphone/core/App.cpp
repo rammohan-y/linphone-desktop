@@ -569,7 +569,7 @@ void App::setSelf(QSharedPointer<App>(me)) {
 	                                         });
 	mCoreModelConnection->makeConnectToCore(&App::lForceOidcTimeout, [this] {
 		qDebug() << "App: force oidc timeout";
-		mCoreModelConnection->invokeToModel([this] { emit CoreModel::getInstance()->forceOidcTimeout(); });
+		mCoreModelConnection->invokeToModel([this] { emit CoreModel::getInstance() -> forceOidcTimeout(); });
 	});
 	mCoreModelConnection->makeConnectToModel(&CoreModel::timeoutTimerStarted, [this]() {
 		qDebug() << "App: oidc timer started";
@@ -1350,6 +1350,7 @@ void App::setCallsWindowProperty(const char *id, QVariant property) {
 void App::closeCallsWindow() {
 	if (mCallsWindow && mCallList && !mCallList->getHaveCall()) {
 		mCallsWindow->close();
+		mCallsWindow->releaseResources();
 		mCallsWindow->deleteLater();
 		mCallsWindow = nullptr;
 	}

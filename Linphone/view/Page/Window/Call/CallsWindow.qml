@@ -15,6 +15,7 @@ AbstractWindow {
     flags: Qt.Window
     minimumWidth: Utils.getSizeWithScreenRatio(1020)
     minimumHeight: Utils.getSizeWithScreenRatio(700)
+    Component.onDestruction: mainWindow.call = null
 
     // modality: Qt.WindowModal
     property CallGui call
@@ -1340,7 +1341,7 @@ AbstractWindow {
                 id: inCallItem
                 Loader {
                     objectName: "inCallItem"
-                    asynchronous: true
+                    asynchronous: false
                     sourceComponent: Item {
                         CallLayout {
                             anchors.fill: parent

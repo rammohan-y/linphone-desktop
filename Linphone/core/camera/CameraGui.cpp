@@ -35,6 +35,11 @@
 DEFINE_ABSTRACT_OBJECT(CameraGui)
 DEFINE_GUI_OBJECT(CameraGui)
 
+// Hack for Qt constness on create Renderer.
+// We need to store the renderer in order to update the SDK filters with this renderer.
+QMap<const CameraGui *, QQuickFramebufferObject::Renderer *> gRenderers;
+QMutex gRenderesLock;
+
 // =============================================================================
 CameraGui::CameraGui(QQuickItem *parent) : QQuickFramebufferObject(parent) {
 	mustBeInMainThread(getClassName());
@@ -50,19 +55,51 @@ CameraGui::CameraGui(QQuickItem *parent) : QQuickFramebufferObject(parent) {
 CameraGui::~CameraGui() {
 	mustBeInMainThread("~" + getClassName());
 	mRefreshTimer.stop();
-	if (mIsPreview) {
-		lDebug() << "[CameraGui] Deactivation";
-		CoreModel::getInstance()->getCore()->enableVideoPreview(false);
+
+	gRenderesLock.lock();
+	gRenderers.remove(this);
+	gRenderesLock.unlock();
+
+	// Clear SDK renderer references asynchronously — must not block UI thread during deleteChildren() cascade.
+	// Capture shared_ptr to the linphone objects so they stay alive until the async lambda runs.
+	auto location = mWindowIdLocation;
+	mWindowIdLocation = None;
+	mLastRenderer = nullptr;
+
+	switch (location) {
+		case CorePreview: {
+			App::postModelAsync([qmlName = mQmlName]() {
+				lInfo() << "[Camera] (" << qmlName << ") ~CameraGui clearing CorePreview";
+				CoreModel::getInstance()->getCore()->setNativePreviewWindowId(nullptr);
+				CoreModel::getInstance()->getCore()->enableVideoPreview(false);
+			});
+		} break;
+		case Call: {
+			if (mCallGui) {
+				auto call = mCallGui->getCore()->getModel()->getMonitor();
+				if (call) {
+					App::postModelAsync([qmlName = mQmlName, call]() {
+						lInfo() << "[Camera] (" << qmlName << ") ~CameraGui clearing Call renderer";
+						call->setNativeVideoWindowId(nullptr);
+					});
+				}
+			}
+		} break;
+		case Device: {
+			if (mParticipantDeviceGui) {
+				auto device = mParticipantDeviceGui->getCore()->getModel()->getMonitor();
+				if (device) {
+					App::postModelAsync([qmlName = mQmlName, device]() {
+						lInfo() << "[Camera] (" << qmlName << ") ~CameraGui clearing Device renderer";
+						device->setNativeVideoWindowId(nullptr);
+					});
+				}
+			}
+		} break;
+		default:
+			break;
 	}
-	setWindowIdLocation(None);
 }
-
-// Hack for Qt constness on create Renderer.
-// We need to store the renderer in order to update the SDK filters with this renderer.
-QMap<const CameraGui *, QQuickFramebufferObject::Renderer *> gRenderers;
-QMutex gRenderesLock;
-
-//-------------------------------------------------------------
 
 void CameraGui::refreshLastRenderer() {
 	gRenderesLock.lock();

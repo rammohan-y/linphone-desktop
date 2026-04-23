@@ -16,6 +16,7 @@ Item {
 	id: mainItem
 	height: 300
 	width: 200
+	Component.onDestruction: cameraLoader.active = false
 	property bool previewEnabled
 	property bool securityBreach
 	property CallGui call: null
