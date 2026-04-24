@@ -231,6 +231,10 @@ public:
 	DECLARE_GETSET(QString, configLocale, ConfigLocale)
 	DECLARE_GETSET(QString, downloadFolder, DownloadFolder)
 	DECLARE_GETSET(QString, audioPlayerFolder, AudioPlayerFolder)
+	QVariantList getAiAgents() const;
+	void setAiAgents(const QVariantList &agents);
+	QVariantList getAiScenarios() const;
+	void setAiScenarios(const QVariantList &scenarios);
 	DECLARE_GETSET(int, shortcutCount, ShortcutCount)
 	DECLARE_GETSET(QVariantList, shortcuts, Shortcuts)
 	DECLARE_GETSET(bool, usernameOnlyForLdapLookupsInCalls, UsernameOnlyForLdapLookupsInCalls)
@@ -293,6 +297,9 @@ signals:
 	void disableMeetingsFeatureChanged(bool value);
 
 	void showPastMeetingsChanged(bool value);
+
+	void aiAgentsChanged(QVariantList agents);
+	void aiScenariosChanged(QVariantList scenarios);
 
 	void autoCheckForUpdateOnStartChanged();
 	void checkForUpdateEnabledChanged();

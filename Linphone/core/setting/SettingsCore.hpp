@@ -25,6 +25,7 @@
 #include "tool/thread/SafeConnection.hpp"
 
 #include <QCommandLineParser>
+#include <QNetworkAccessManager>
 #include <QObject>
 #include <QSettings>
 #include <QVariantMap>
@@ -46,6 +47,11 @@ public:
 	Q_PROPERTY(QString downloadFolder READ getDownloadFolder WRITE setDownloadFolder NOTIFY downloadFolderChanged)
 	Q_PROPERTY(
 	    QString audioPlayerFolder READ getAudioPlayerFolder WRITE setAudioPlayerFolder NOTIFY audioPlayerFolderChanged)
+
+	// AI Agent
+	Q_PROPERTY(QVariantList aiAgents READ getAiAgents WRITE setAiAgents NOTIFY aiAgentsChanged)
+	Q_PROPERTY(QVariantList aiScenarios READ getAiScenarios WRITE setAiScenarios NOTIFY aiScenariosChanged)
+
 	Q_PROPERTY(bool displayNotificationContent READ getDisplayNotificationContent WRITE setDisplayNotificationContent
 	               NOTIFY displayNotificationContentChanged)
 	Q_PROPERTY(
@@ -163,6 +169,20 @@ public:
 
 	QString getAudioPlayerFolder() const;
 	void setAudioPlayerFolder(QString folder);
+
+	QVariantList getAiAgents() const;
+	void setAiAgents(QVariantList agents);
+	Q_INVOKABLE void addAiAgent(QVariantMap agent);
+	Q_INVOKABLE void removeAiAgent(int index);
+	Q_INVOKABLE void updateAiAgent(int index, QVariantMap agent);
+
+	QVariantList getAiScenarios() const;
+	void setAiScenarios(QVariantList scenarios);
+	Q_INVOKABLE void addAiScenario(QVariantMap scenario);
+	Q_INVOKABLE void removeAiScenario(int index);
+	Q_INVOKABLE void updateAiScenario(int index, QVariantMap scenario);
+	Q_INVOKABLE QVariantList getAgentNames() const;
+	Q_INVOKABLE void testAiAgent(int index);
 
 	bool getDisplayNotificationContent() {
 		return mDisplayNotificationContent;
@@ -332,6 +352,9 @@ signals:
 	void autoDownloadReceivedFilesChanged();
 	void downloadFolderChanged();
 	void audioPlayerFolderChanged();
+	void aiAgentsChanged();
+	void aiScenariosChanged();
+	void aiAgentTestResult(bool success, QString message);
 	void displayNotificationContentChanged();
 
 	void showPastMeetingsChanged();
@@ -434,6 +457,8 @@ private:
 	bool mAutoDownloadReceivedFiles;
 	QString mDownloadFolder;
 	QString mAudioPlayerFolder;
+	QVariantList mAiAgents;
+	QVariantList mAiScenarios;
 	bool mDisplayNotificationContent;
 	bool mAutomaticallyRecordCallsEnabled;
 

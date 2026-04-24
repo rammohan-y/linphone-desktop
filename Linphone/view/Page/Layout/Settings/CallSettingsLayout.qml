@@ -177,4 +177,5 @@ AbstractSettingsLayout {
             spacing: Utils.getSizeWithScreenRatio(20)
 		}
 	}
+
 }
