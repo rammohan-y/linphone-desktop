@@ -63,6 +63,7 @@ private:
 	void setStatus(const QString &status);
 	void appendTranscript(const QString &speaker, const QString &text);
 	QByteArray resample24kTo16k(const QByteArray &pcm24k);
+	QByteArray downsample48kTo16k(const QByteArray &pcm48k);
 	QString writeResponseWav(const QByteArray &pcm16k);
 	void writeWavHeader(QFile &file, int sampleRate, int channels, int dataSize);
 	void cleanup();

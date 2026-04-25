@@ -433,8 +433,13 @@ void AICallController::startAudioCapture() {
 		mPcmToGemini = {};
 	}
 	if (!aiEnvOn("LINPHONE_AI_DISABLE_POLLING") && mCapturePoller && mGeminiClient) {
-		mPcmToGemini = connect(mCapturePoller, &CaptureFilePoller::pcmReady, mGeminiClient,
-		                       &GeminiLiveClient::sendAudioChunk, Qt::QueuedConnection);
+		mPcmToGemini = connect(mCapturePoller, &CaptureFilePoller::pcmReady, this, [this](const QByteArray &pcm48k) {
+			QByteArray pcm16k = downsample48kTo16k(pcm48k);
+			if (!pcm16k.isEmpty() && mGeminiClient) {
+				QMetaObject::invokeMethod(
+				    mGeminiClient, [this, pcm16k]() { mGeminiClient->sendAudioChunk(pcm16k); }, Qt::QueuedConnection);
+			}
+		});
 	}
 	if (aiEnvOn("LINPHONE_AI_DISABLE_POLLING")) {
 		qWarning() << "[AICall] LINPHONE_AI_DISABLE_POLLING=1 (mixed-record running, but no poller reads)";
@@ -727,6 +732,23 @@ void AICallController::setMicMute(bool mute) {
 		    CoreModel::getInstance().get(), [callModel]() { callModel->setMicrophoneMuted(true); },
 		    Qt::QueuedConnection);
 	}
+}
+
+QByteArray AICallController::downsample48kTo16k(const QByteArray &pcm48k) {
+	int srcFrames = pcm48k.size() / 2;
+	int dstFrames = srcFrames / 3;
+	if (dstFrames == 0) return {};
+
+	const int16_t *src = reinterpret_cast<const int16_t *>(pcm48k.constData());
+	QByteArray pcm16k(dstFrames * 2, Qt::Uninitialized);
+	int16_t *dst = reinterpret_cast<int16_t *>(pcm16k.data());
+
+	for (int i = 0; i < dstFrames; ++i) {
+		int idx = i * 3;
+		int32_t sum = static_cast<int32_t>(src[idx]) + src[idx + 1] + src[idx + 2];
+		dst[i] = static_cast<int16_t>(sum / 3);
+	}
+	return pcm16k;
 }
 
 QByteArray AICallController::resample24kTo16k(const QByteArray &pcm24k) {
