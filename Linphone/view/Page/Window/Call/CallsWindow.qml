@@ -1423,7 +1423,9 @@ AbstractWindow {
                         spacing: Utils.getSizeWithScreenRatio(10)
 
                         Text {
-                            text: "AI Agent"
+                            text: AICallControllerCpp.activeScenarioName.length > 0
+                                  ? "AI Scenario - " + AICallControllerCpp.activeScenarioName
+                                  : "AI Scenario"
                             color: DefaultStyle.main2_600
                             font {
                                 pixelSize: Utils.getSizeWithScreenRatio(16)
@@ -1544,7 +1546,7 @@ AbstractWindow {
                             Layout.fillWidth: true
                             visible: AICallControllerCpp.active
                             style: ButtonStyle.secondary
-                            text: "Stop AI Agent"
+                            text: "Stop AI"
                             onClicked: AICallControllerCpp.stopAICall()
                         }
 
@@ -2210,7 +2212,7 @@ AbstractWindow {
                             IconLabelButton {
                                 Layout.fillWidth: true
                                 icon.source: AppIcons.micro
-                                text: "AI Agent"
+                                text: "AI Scenario"
                                 icon.width: Utils.getSizeWithScreenRatio(32)
                                 icon.height: Utils.getSizeWithScreenRatio(32)
                                 style: ButtonStyle.noBackground

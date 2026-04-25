@@ -24,6 +24,7 @@ class AICallController : public QObject {
 	Q_PROPERTY(int armedScenarioIndex READ getArmedScenarioIndex NOTIFY armedChanged)
 	Q_PROPERTY(QString transcript READ getTranscript NOTIFY transcriptChanged)
 	Q_PROPERTY(QString status READ getStatus NOTIFY statusChanged)
+	Q_PROPERTY(QString activeScenarioName READ getActiveScenarioName NOTIFY activeScenarioNameChanged)
 
 public:
 	explicit AICallController(QObject *parent = nullptr);
@@ -40,6 +41,7 @@ public:
 	int getArmedScenarioIndex() const;
 	QString getTranscript() const;
 	QString getStatus() const;
+	QString getActiveScenarioName() const;
 
 signals:
 	void activeChanged();
@@ -47,6 +49,7 @@ signals:
 	void geminiReadyChanged();
 	void transcriptChanged();
 	void statusChanged();
+	void activeScenarioNameChanged();
 
 	void requestConnect(QString apiKey, QString model, QString voice, QString language, QString systemPrompt);
 	void requestDisconnect();
@@ -102,6 +105,7 @@ private:
 
 	QString mTranscript;
 	QString mStatus;
+	QString mActiveScenarioName;
 	bool mActive = false;
 	bool mDestructing = false;
 

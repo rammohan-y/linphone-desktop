@@ -14,7 +14,7 @@ AbstractSettingsLayout {
 	contentModel: [
 		{
 			title: "AI Scenarios",
-			subTitle: "Define reusable call scripts linked to an AI agent",
+			subTitle: "Define reusable call scripts linked to an AI vendor",
 			contentComponent: scenarioListComponent
 		}
 	]
@@ -57,8 +57,8 @@ AbstractSettingsLayout {
 								property var agentNames: SettingsCpp.getAgentNames()
 								text: {
 									var idx = modelData.agentIndex || 0
-									var name = (agentNames && idx < agentNames.length) ? agentNames[idx] : "No agent"
-									return "Agent: " + name
+									var name = (agentNames && idx < agentNames.length) ? agentNames[idx] : "No vendor"
+									return "Vendor: " + name
 								}
 								font.pixelSize: Typography.p1.pixelSize
 								font.italic: true
@@ -144,7 +144,7 @@ AbstractSettingsLayout {
 						Layout.fillWidth: true
 						spacing: Utils.getSizeWithScreenRatio(4)
 						Text {
-							text: "AI Agent"
+							text: "AI Vendor"
 							font: Typography.p2l
 							color: DefaultStyle.main2_600
 						}

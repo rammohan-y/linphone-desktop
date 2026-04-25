@@ -23,7 +23,7 @@ AbstractSettingsMenu {
         {title: qsTr("settings_meetings_title"), layout: "MeetingsSettingsLayout", visible: !SettingsCpp.disableMeetingsFeature},
         //: "Réseau"
         {title: qsTr("settings_network_title"), layout: "NetworkSettingsLayout"},
-        {title: "AI Agents", layout: "AIAgentSettingsLayout"},
+        {title: "AI Vendors", layout: "AIAgentSettingsLayout"},
         {title: "AI Scenarios", layout: "AIScenarioSettingsLayout"},
         //: "Paramètres avancés"
         {title: qsTr("settings_advanced_title"), layout: "AdvancedSettingsLayout"}

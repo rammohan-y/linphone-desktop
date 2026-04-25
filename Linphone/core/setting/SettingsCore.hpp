@@ -48,7 +48,7 @@ public:
 	Q_PROPERTY(
 	    QString audioPlayerFolder READ getAudioPlayerFolder WRITE setAudioPlayerFolder NOTIFY audioPlayerFolderChanged)
 
-	// AI Agent
+	// AI Vendor
 	Q_PROPERTY(QVariantList aiAgents READ getAiAgents WRITE setAiAgents NOTIFY aiAgentsChanged)
 	Q_PROPERTY(QVariantList aiScenarios READ getAiScenarios WRITE setAiScenarios NOTIFY aiScenariosChanged)
 

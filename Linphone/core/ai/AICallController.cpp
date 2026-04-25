@@ -105,6 +105,10 @@ int AICallController::getArmedScenarioIndex() const {
 	return mArmedScenarioIndex;
 }
 
+QString AICallController::getActiveScenarioName() const {
+	return mActiveScenarioName;
+}
+
 void AICallController::armAICall(int scenarioIndex) {
 	if (mActive) {
 		qWarning() << "[AICall] Already active, cannot arm";
@@ -134,6 +138,8 @@ void AICallController::armAICall(int scenarioIndex) {
 	}
 
 	QVariantMap scenario = scenarios[scenarioIndex].toMap();
+	mActiveScenarioName = scenario["name"].toString();
+	emit activeScenarioNameChanged();
 	int agentIndex = scenario["agentIndex"].toInt();
 	QString systemPrompt = scenario["systemPrompt"].toString();
 
@@ -449,7 +455,7 @@ void AICallController::startAudioCapture() {
 		QMetaObject::invokeMethod(mCapturePoller, "startCapture", Qt::QueuedConnection,
 		                          Q_ARG(QString, mCaptureFilePath));
 	}
-	setStatus("AI Agent active — listening...");
+	setStatus(mActiveScenarioName.isEmpty() ? "AI active — listening..." : mActiveScenarioName + " — listening...");
 
 	mActive = true;
 	// Defer: QML must not run heavy replace() in the same stack as this slot.
@@ -614,6 +620,8 @@ void AICallController::cleanup() {
 		mTempDir.clear();
 	}
 
+	mActiveScenarioName.clear();
+	emit activeScenarioNameChanged();
 	mStreamChunkBuffer.squeeze();
 	mTranscript.squeeze();
 

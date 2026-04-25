@@ -13,7 +13,7 @@ AbstractSettingsLayout {
 	width: parent?.width
 	contentModel: [
 		{
-			title: "AI Agents",
+			title: "AI Vendors",
 			subTitle: "Configure AI vendor profiles for automated calls",
 			contentComponent: agentListComponent
 		}
@@ -49,7 +49,7 @@ AbstractSettingsLayout {
 							Layout.fillWidth: true
 							spacing: 2
 							Text {
-								text: modelData.name || "Unnamed Agent"
+								text: modelData.name || "Unnamed Vendor"
 								font: Typography.p2l
 								color: DefaultStyle.main2_600
 							}
@@ -85,7 +85,7 @@ AbstractSettingsLayout {
 			MediumButton {
 				Layout.topMargin: Utils.getSizeWithScreenRatio(10)
 				style: ButtonStyle.secondary
-				text: "+ Add Agent"
+				text: "+ Add Vendor"
 				onClicked: {
 					mainItem.editingAgentIndex = -1
 					agentDialog.agentData = {
@@ -131,7 +131,7 @@ AbstractSettingsLayout {
 					spacing: Utils.getSizeWithScreenRatio(12)
 
 					Text {
-						text: mainItem.editingAgentIndex >= 0 ? "Edit Agent" : "New Agent"
+						text: mainItem.editingAgentIndex >= 0 ? "Edit Vendor" : "New Vendor"
 						font: Typography.h4
 						color: DefaultStyle.main2_600
 					}

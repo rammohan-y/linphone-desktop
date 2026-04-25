@@ -45,12 +45,14 @@ AbstractSettingsLayout {
             //: Video codecs
             title: qsTr("settings_advanced_video_codecs_title"),
 			subTitle: "",
-			contentComponent: videoCodecsComponent
+			contentComponent: videoCodecsComponent,
+			visible: SettingsCpp.videoEnabled
 		},
 		{
 			title: "",
 			subTitle: "",
-			contentComponent: hideFpsComponent
+			contentComponent: hideFpsComponent,
+			visible: SettingsCpp.videoEnabled
 		}
 	]
 

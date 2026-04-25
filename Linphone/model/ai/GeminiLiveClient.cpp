@@ -231,15 +231,21 @@ void GeminiLiveClient::sendSetupMessage() {
 	generationConfig["responseModalities"] = modalities;
 	generationConfig["temperature"] = 0.8;
 
-	if (!mVoice.isEmpty()) {
-		QJsonObject voiceConfig;
-		voiceConfig["voiceName"] = mVoice;
-
-		QJsonObject prebuiltVoice;
-		prebuiltVoice["prebuiltVoiceConfig"] = voiceConfig;
-
+	if (!mVoice.isEmpty() || !mLanguage.isEmpty()) {
 		QJsonObject speechConfig;
-		speechConfig["voiceConfig"] = prebuiltVoice;
+
+		if (!mVoice.isEmpty()) {
+			QJsonObject voiceConfig;
+			voiceConfig["voiceName"] = mVoice;
+
+			QJsonObject prebuiltVoice;
+			prebuiltVoice["prebuiltVoiceConfig"] = voiceConfig;
+			speechConfig["voiceConfig"] = prebuiltVoice;
+		}
+
+		if (!mLanguage.isEmpty()) {
+			speechConfig["languageCode"] = mLanguage;
+		}
 
 		generationConfig["speechConfig"] = speechConfig;
 	}

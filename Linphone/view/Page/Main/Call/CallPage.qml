@@ -469,7 +469,7 @@ AbstractMainPage {
                                 var scenarios = SettingsCpp.aiScenarios
                                 var idx = AICallControllerCpp.armedScenarioIndex
                                 var name = (idx >= 0 && idx < scenarios.length) ? scenarios[idx].name : ""
-                                return "AI Agent ready: " + name + " — dial a number"
+                                return "AI Scenario ready: " + name + " — dial a number"
                             }
                             color: DefaultStyle.grey_0
                             font.pixelSize: Utils.getSizeWithScreenRatio(12)
