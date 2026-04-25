@@ -338,6 +338,7 @@ void AICallController::startAudioCapture() {
 	if (!callList) return;
 	auto callCore = callList->getCurrentCallCore();
 	if (!callCore) return;
+	mCallCore = callCore;
 
 	// Feature flags: allow disabling AI features one-by-one to isolate 2nd-call degradation.
 	if (aiEnvOn("LINPHONE_AI_DISABLE_CAPTURE")) {
@@ -574,29 +575,26 @@ void AICallController::cleanup() {
 		mCallStateConnection = {};
 	}
 
-	auto callList = App::getInstance()->getCallList();
-	if (callList) {
-		auto callCore = callList->getCurrentCallCore();
-		if (callCore) {
-			emit callCore->lStopFilePlay();
+	if (mCallCore) {
+		emit mCallCore->lStopFilePlay();
 
-			auto callModel = callCore->getModel();
-			QMetaObject::invokeMethod(
-			    CoreModel::getInstance().get(),
-			    [callModel]() {
-				    auto call = callModel->getMonitor();
-				    if (!call) return;
+		auto callModel = mCallCore->getModel();
+		QMetaObject::invokeMethod(
+		    CoreModel::getInstance().get(),
+		    [callModel]() {
+			    auto call = callModel->getMonitor();
+			    if (!call) return;
 
-				    LinphoneCall *cCall = call->cPtr();
-				    AudioStream *stream =
-				        reinterpret_cast<AudioStream *>(linphone_call_get_stream(cCall, LinphoneStreamTypeAudio));
-				    if (stream) {
-					    audio_stream_mixed_record_stop(stream);
-					    qInfo() << "[AICall] mixed_record_stop called";
-				    }
-			    },
-			    Qt::BlockingQueuedConnection);
-		}
+			    LinphoneCall *cCall = call->cPtr();
+			    AudioStream *stream =
+			        reinterpret_cast<AudioStream *>(linphone_call_get_stream(cCall, LinphoneStreamTypeAudio));
+			    if (stream) {
+				    audio_stream_mixed_record_stop(stream);
+				    qInfo() << "[AICall] mixed_record_stop called";
+			    }
+		    },
+		    Qt::BlockingQueuedConnection);
+		mCallCore.reset();
 	}
 
 	if (!aiEnvOn("LINPHONE_AI_DISABLE_MIC_MUTE")) setMicMute(false);
@@ -682,10 +680,7 @@ void AICallController::onGeminiTurnComplete(QByteArray fullAudioResponse) {
 		return;
 	}
 
-	auto callList = App::getInstance()->getCallList();
-	if (!callList) return;
-	auto callCore = callList->getCurrentCallCore();
-	if (!callCore) return;
+	if (!mCallCore) return;
 
 	if (mRemotePlayEofConnection) {
 		disconnect(mRemotePlayEofConnection);
@@ -693,10 +688,10 @@ void AICallController::onGeminiTurnComplete(QByteArray fullAudioResponse) {
 	}
 
 	mRemotePlayEofConnection =
-	    connect(callCore.get(), &CallCore::filePlayFinished, this, &AICallController::resumeAfterPlayback);
+	    connect(mCallCore.get(), &CallCore::filePlayFinished, this, &AICallController::resumeAfterPlayback);
 
 	qInfo() << "[AICall] playResponseToRemote via lPlayFile:" << wavPath;
-	emit callCore->lPlayFile(wavPath);
+	emit mCallCore->lPlayFile(wavPath);
 }
 
 void AICallController::resumeAfterPlayback() {
@@ -716,14 +711,11 @@ void AICallController::setMicMute(bool mute) {
 		return;
 	}
 	qInfo() << "[AICall] setMicMute:" << mute;
-	auto callList = App::getInstance()->getCallList();
-	if (!callList) return;
-	auto callCore = callList->getCurrentCallCore();
-	if (!callCore) return;
-	auto callModel = callCore->getModel();
+	if (!mCallCore) return;
+	auto callModel = mCallCore->getModel();
 
 	if (mute) {
-		mMicWasMuted = callCore->getMicrophoneMuted();
+		mMicWasMuted = mCallCore->getMicrophoneMuted();
 	}
 
 	QMetaObject::invokeMethod(

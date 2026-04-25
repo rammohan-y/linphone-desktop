@@ -6,10 +6,12 @@
 #include <QByteArray>
 #include <QFile>
 #include <QObject>
+#include <QSharedPointer>
 #include <QThread>
 
 #include <functional>
 
+class CallCore;
 class CaptureFilePoller;
 class GeminiLiveClient;
 
@@ -102,6 +104,7 @@ private:
 	bool mActive = false;
 	bool mDestructing = false;
 
+	QSharedPointer<CallCore> mCallCore;
 	qint64 mCallStartTime = 0;
 	QMetaObject::Connection mCallEndConnection;
 };

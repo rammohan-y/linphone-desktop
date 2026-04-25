@@ -12,6 +12,11 @@ AbstractSettingsLayout {
 	width: parent?.width
 	contentModel: [
 		{
+			title: "Features",
+			subTitle: "",
+			contentComponent: featuresComponent
+		},
+		{
             //: System
             title: qsTr("settings_system_title"),
 			subTitle: "",
@@ -53,6 +58,51 @@ AbstractSettingsLayout {
 		SettingsCpp.save()
 	}
 	onUndo: SettingsCpp.undo()
+
+	// Features
+	///////////
+
+	Component {
+		id: featuresComponent
+		ColumnLayout {
+			spacing: Utils.getSizeWithScreenRatio(40)
+			SwitchSetting {
+				Layout.fillWidth: true
+				titleText: "Video"
+				subTitleText: "Enable video calls and camera"
+				propertyName: "videoEnabled"
+				propertyOwner: SettingsCpp
+			}
+			SwitchSetting {
+				Layout.fillWidth: true
+				titleText: "Conversations"
+				subTitleText: "Enable chat and messaging"
+				checked: !SettingsCpp.disableChatFeature
+				onToggled: SettingsCpp.disableChatFeature = !checked
+			}
+			SwitchSetting {
+				Layout.fillWidth: true
+				titleText: "Meetings"
+				subTitleText: "Enable meetings and conferencing"
+				checked: !SettingsCpp.disableMeetingsFeature
+				onToggled: SettingsCpp.disableMeetingsFeature = !checked
+			}
+			SwitchSetting {
+				Layout.fillWidth: true
+				titleText: "Call Recordings"
+				subTitleText: "Show recordings menu entry"
+				checked: !SettingsCpp.disableCallRecordings
+				onToggled: SettingsCpp.disableCallRecordings = !checked
+			}
+			SwitchSetting {
+				Layout.fillWidth: true
+				titleText: "Call Forward"
+				subTitleText: "Show call forwarding settings"
+				checked: !SettingsCpp.disableCallForward
+				onToggled: SettingsCpp.disableCallForward = !checked
+			}
+		}
+	}
 
 	// System
 	/////////

@@ -75,6 +75,7 @@ AbstractSettingsLayout {
 							icon.source: AppIcons.trashCan
 							onClicked: {
 								SettingsCpp.removeAiAgent(index)
+								SettingsCpp.save()
 							}
 						}
 					}
@@ -233,6 +234,7 @@ AbstractSettingsLayout {
 								} else {
 									SettingsCpp.addAiAgent(agent)
 								}
+								SettingsCpp.save()
 								agentDialog.close()
 							}
 						}

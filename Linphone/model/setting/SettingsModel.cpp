@@ -1000,7 +1000,7 @@ void SettingsModel::setDisableMeetingsFeature(bool value) {
 }
 
 bool SettingsModel::getDisableMeetingsFeature() const {
-	return !!mConfig->getInt(UiSection, "disable_meetings_feature", 0);
+	return !!mConfig->getInt(UiSection, "disable_meetings_feature", 1);
 }
 
 bool SettingsModel::getShowPastMeetings() const {
@@ -1117,7 +1117,7 @@ void SettingsModel::notifyConfigReady(){
 
 }
 
-DEFINE_GETSET_CONFIG(SettingsModel, bool, Bool, disableChatFeature, DisableChatFeature, "disable_chat_feature", false)
+DEFINE_GETSET_CONFIG(SettingsModel, bool, Bool, disableChatFeature, DisableChatFeature, "disable_chat_feature", true)
 DEFINE_GETSET_CONFIG(SettingsModel,
 						bool,
 						Bool,
@@ -1137,7 +1137,7 @@ DEFINE_GETSET_CONFIG(SettingsModel,
 						disableCallRecordings,
 						DisableCallRecordings,
 						"disable_call_recordings_feature",
-						false) 
+						true) 
 DEFINE_GETSET_CONFIG(SettingsModel,
 						bool,
 						Bool,

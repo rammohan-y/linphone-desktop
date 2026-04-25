@@ -1888,7 +1888,7 @@ AbstractWindow {
                     // Transfert call button
                     CheckableButton {
                         id: transferCallButton
-                        visible: !mainWindow.conference
+                        visible: !mainWindow.conference && !SettingsCpp.disableCallForward
                         icon.source: AppIcons.transferCall
                         Layout.preferredWidth: Utils.getSizeWithScreenRatio(55)
                         Layout.preferredHeight: Utils.getSizeWithScreenRatio(55)
@@ -1912,6 +1912,7 @@ AbstractWindow {
                     // New call button
                     CheckableButton {
                         id: newCallButton
+                        visible: !SettingsCpp.disableCallForward
                         checkable: true
                         icon.source: AppIcons.newCall
                         Layout.preferredWidth: Utils.getSizeWithScreenRatio(55)
@@ -2034,7 +2035,7 @@ AbstractWindow {
                     // Chat panel button
                     CheckableButton {
                         id: chatPanelButton
-                        visible: !mainWindow.conference || mainWindow.conference.core.isChatEnabled
+                        visible: !SettingsCpp.disableChatFeature && (!mainWindow.conference || mainWindow.conference.core.isChatEnabled)
                         iconUrl: AppIcons.chatTeardropText
                         //: Open chat…
                         ToolTip.text: qsTr("call_open_chat_hint")

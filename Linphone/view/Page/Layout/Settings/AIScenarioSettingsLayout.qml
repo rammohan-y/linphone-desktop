@@ -80,6 +80,7 @@ AbstractSettingsLayout {
 							icon.source: AppIcons.trashCan
 							onClicked: {
 								SettingsCpp.removeAiScenario(index)
+								SettingsCpp.save()
 							}
 						}
 					}
@@ -205,6 +206,7 @@ AbstractSettingsLayout {
 								} else {
 									SettingsCpp.addAiScenario(scenario)
 								}
+								SettingsCpp.save()
 								scenarioDialog.close()
 							}
 						}
