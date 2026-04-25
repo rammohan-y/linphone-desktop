@@ -384,9 +384,10 @@ void AICallController::startAudioCapture() {
 	// rightPanel.replace(aiAgentPanel) runs synchronously and blocks the main
 	// thread, mixing doesn't run yet, and the start of the callee's speech
 	// is not recorded — worse on each subsequent call as the UI gets heavier.
+	int *captureSampleRateOut = &mCaptureSampleRate;
 	QMetaObject::invokeMethod(
 	    CoreModel::getInstance().get(),
-	    [callModel, captureFilePath]() {
+	    [callModel, captureFilePath, captureSampleRateOut]() {
 		    auto call = callModel->getMonitor();
 		    if (!call) {
 			    qWarning() << "[AICall] No call monitor in SDK thread";
@@ -399,6 +400,7 @@ void AICallController::startAudioCapture() {
 			    qWarning() << "[AICall] No audio stream on call";
 			    return;
 		    }
+		    *captureSampleRateOut = stream->sample_rate;
 		    qInfo() << "[AICall] AudioStream sample_rate:" << stream->sample_rate << "nchannels:" << stream->nchannels
 		            << "features:" << stream->features;
 		    int ret = audio_stream_set_mixed_record_file(stream, captureFilePath.c_str());
@@ -433,11 +435,11 @@ void AICallController::startAudioCapture() {
 		mPcmToGemini = {};
 	}
 	if (!aiEnvOn("LINPHONE_AI_DISABLE_POLLING") && mCapturePoller && mGeminiClient) {
-		mPcmToGemini = connect(mCapturePoller, &CaptureFilePoller::pcmReady, this, [this](const QByteArray &pcm48k) {
-			QByteArray pcm16k = downsample48kTo16k(pcm48k);
-			if (!pcm16k.isEmpty() && mGeminiClient) {
+		mPcmToGemini = connect(mCapturePoller, &CaptureFilePoller::pcmReady, this, [this](const QByteArray &pcmData) {
+			QByteArray toSend = (mCaptureSampleRate > 16000) ? downsample48kTo16k(pcmData) : pcmData;
+			if (!toSend.isEmpty() && mGeminiClient) {
 				QMetaObject::invokeMethod(
-				    mGeminiClient, [this, pcm16k]() { mGeminiClient->sendAudioChunk(pcm16k); }, Qt::QueuedConnection);
+				    mGeminiClient, [this, toSend]() { mGeminiClient->sendAudioChunk(toSend); }, Qt::QueuedConnection);
 			}
 		});
 	}

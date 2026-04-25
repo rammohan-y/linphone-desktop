@@ -106,6 +106,7 @@ private:
 	bool mDestructing = false;
 
 	QSharedPointer<CallCore> mCallCore;
+	int mCaptureSampleRate = 0;
 	qint64 mCallStartTime = 0;
 	QMetaObject::Connection mCallEndConnection;
 };
