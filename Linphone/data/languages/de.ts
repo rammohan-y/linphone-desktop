@@ -308,7 +308,7 @@
     <message>
         <location filename="../../view/Page/Layout/Settings/AccountSettingsGeneralLayout.qml" line="202"/>
         <source>manage_account_delete_message</source>
-        <translation>Ihr Konto wird aus diesem Linphone-Client entfernt, bleibt jedoch auf Ihren anderen Geräten verbunden</translation>
+        <translation>Ihr Konto wird aus diesem CallForge-Client entfernt, bleibt jedoch auf Ihren anderen Geräten verbunden</translation>
     </message>
     <message>
         <location filename="../../view/Page/Layout/Settings/AccountSettingsGeneralLayout.qml" line="221"/>
@@ -729,7 +729,7 @@
     <message>
         <location filename="../../core/App.cpp" line="548"/>
         <source>info_popup_new_version_available_message</source>
-        <extracomment>A new version of Linphone (%1) is available. %2</extracomment>
+        <extracomment>A new version of CallForge (%1) is available. %2</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -776,7 +776,7 @@
         <location filename="../../core/App.cpp" line="1174"/>
         <source>command_line_option_config_to_fetch</source>
         <extracomment>&quot;Specify the linphone configuration file to be fetched. It will be merged with the current configuration.&quot;</extracomment>
-        <translation>Abzurufende Linphone-Konfigurationsdatei angeben. Sie wird mit der aktuellen Konfiguration zusammengeführt.</translation>
+        <translation>Abzurufende CallForge-Konfigurationsdatei angeben. Sie wird mit der aktuellen Konfiguration zusammengeführt.</translation>
     </message>
     <message>
         <location filename="../../core/App.cpp" line="1176"/>
@@ -2030,8 +2030,8 @@
     <message>
         <location filename="../../view/Page/Layout/Settings/CarddavSettingsLayout.qml" line="20"/>
         <source>settings_contacts_carddav_subtitle</source>
-        <extracomment>&quot;Ajouter un carnet d’adresse CardDAV pour synchroniser vos contacts Linphone avec un carnet d’adresse tiers.&quot;</extracomment>
-        <translation>Fügen Sie ein CardDAV-Adressbuch hinzu, um Ihre Linphone-Kontakte mit einem Drittanbieter-Adressbuch zu synchronisieren.</translation>
+        <extracomment>&quot;Ajouter un carnet d’adresse CardDAV pour synchroniser vos contacts CallForge avec un carnet d’adresse tiers.&quot;</extracomment>
+        <translation>Fügen Sie ein CardDAV-Adressbuch hinzu, um Ihre CallForge-Kontakte mit einem Drittanbieter-Adressbuch zu synchronisieren.</translation>
     </message>
     <message>
         <location filename="../../view/Page/Layout/Settings/CarddavSettingsLayout.qml" line="31"/>
@@ -3534,7 +3534,7 @@ Error</extracomment>
     <message>
         <location filename="../../view/Page/Layout/Settings/ContactsSettingsLayout.qml" line="22"/>
         <source>settings_contacts_carddav_subtitle</source>
-        <translation>CardDAV-Adressbuch hinzufügen, um Linphone-Kontakte mit einem Drittanbieter-Adressbuch zu synchronisieren.</translation>
+        <translation>CardDAV-Adressbuch hinzufügen, um CallForge-Kontakte mit einem Drittanbieter-Adressbuch zu synchronisieren.</translation>
     </message>
     <message>
         <location filename="../../view/Page/Layout/Settings/ContactsSettingsLayout.qml" line="42"/>
@@ -6179,7 +6179,7 @@ Pour les activer dans un projet commercial, merci de nous contacter.</source>
         <location filename="../../view/Page/Form/Login/SIPLoginPage.qml" line="133"/>
         <source>assistant_third_party_sip_account_create_linphone_account</source>
         <extracomment>&quot;Créer un compte linphone&quot;</extracomment>
-        <translation>Linphone-Konto erstellen</translation>
+        <translation>CallForge-Konto erstellen</translation>
     </message>
     <message>
         <location filename="../../view/Page/Form/Login/SIPLoginPage.qml" line="145"/>
@@ -6379,8 +6379,8 @@ Pour les activer dans un projet commercial, merci de nous contacter.</source>
     <message>
         <location filename="../../view/Page/Form/Security/SecurityModePage.qml" line="57"/>
         <source>manage_account_e2e_encrypted_mode_interoperable_summary</source>
-        <extracomment>&quot;Ce mode vous permet de profiter de toute les fonctionnalités de Linphone, toute en restant interopérable avec n’importe qu’elle autre service SIP.&quot;</extracomment>
-        <translation>Dieser Modus ermöglicht es, alle Funktionen von Linphone zu nutzen, während Sie weiterhin mit jedem anderen SIP-Dienst interoperabel bleiben.</translation>
+        <extracomment>&quot;Ce mode vous permet de profiter de toute les fonctionnalités de CallForge, toute en restant interopérable avec n’importe qu’elle autre service SIP.&quot;</extracomment>
+        <translation>Dieser Modus ermöglicht es, alle Funktionen von CallForge zu nutzen, während Sie weiterhin mit jedem anderen SIP-Dienst interoperabel bleiben.</translation>
     </message>
     <message>
         <location filename="../../view/Page/Form/Security/SecurityModePage.qml" line="77"/>

@@ -58,6 +58,8 @@ assistant_supports_phone_numbers/readonly=0
 use_qrcode=0
 
 [video]
+capture=0
+display=0
 auto_resize_preview_to_keep_ratio=1
 max_conference_size=vga
 other_display_mode=Hybrid

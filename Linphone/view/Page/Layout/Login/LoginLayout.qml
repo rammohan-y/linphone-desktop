@@ -136,6 +136,7 @@ Rectangle {
 			}
 			BigButton {
 				id: aboutButton
+				visible: false
 				Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
 				icon.source: AppIcons.info
 				text: qsTr("help_about_title").arg(applicationName)

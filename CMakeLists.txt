@@ -71,8 +71,8 @@ endif()
 
 set(CMAKE_INSTALL_PREFIX "${APPLICATION_OUTPUT_DIR}")
 
-set(LINPHONEAPP_APPLICATION_NAME "Linphone" CACHE STRING "Application name" )
-set(LINPHONEAPP_EXECUTABLE_NAME "linphone" CACHE STRING "Executable name" )
+set(LINPHONEAPP_APPLICATION_NAME "CallForge" CACHE STRING "Application name" )
+set(LINPHONEAPP_EXECUTABLE_NAME "callforge" CACHE STRING "Executable name" )
 
 # Include application_info.cmake here as the LINPHONEAPP_APPLICATION_NAME variable must be known as it is set to the APPLICATION_NAME variable.
 include(Linphone/application_info.cmake)
@@ -188,7 +188,7 @@ add_option(OPTION_LIST ENABLE_SCREENSHARING "Enable screen sharing." ${ENABLE_VI
 add_option(OPTION_LIST ENABLE_BUGSPLAT_SYMBOLS_UPLOAD "Generate and upload symbols to Bugsplat." OFF)
 add_cache(OPTION_LIST BUGSPLAT_CLIENT_ID "Client ID for Bugsplat." "")
 add_cache(OPTION_LIST BUGSPLAT_CLIENT_SECRET "Client Secret for Bugsplat." "")
-add_cache(OPTION_LIST BUGSPLAT_DATABASE "Database name for Bugsplat." "Linphone")
+add_cache(OPTION_LIST BUGSPLAT_DATABASE "Database name for Bugsplat." "CallForge")
 
 
 

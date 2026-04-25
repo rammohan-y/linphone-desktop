@@ -541,6 +541,7 @@ Item {
                                     }
                                     IconLabelButton {
                                         id: helpButton
+                                        visible: false
                                         Layout.fillWidth: true
                                         icon.width: Utils.getSizeWithScreenRatio(32)
                                         icon.height: Utils.getSizeWithScreenRatio(32)

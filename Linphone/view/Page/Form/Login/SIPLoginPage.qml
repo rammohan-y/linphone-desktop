@@ -453,7 +453,7 @@ LoginLayout {
 		},
 		Control.StackView {
 			id: rootStackView
-			initialItem: SettingsCpp.assistantGoDirectlyToThirdPartySipAccountLogin ? secondItem : firstItem
+			initialItem: secondItem
 			anchors.left: parent.left
 			anchors.top: parent.top
 			anchors.bottom: parent.bottom

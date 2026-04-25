@@ -53,12 +53,12 @@ QtObject {
                 "main700": "#B8007A"
             },
             "purple": {
-                "main100": "#FFD6FF",
-                "main200": "#F0B3F0",
-                "main300": "#FF99FF",
-                "main500": "#800080",
-                "main600": "#660066",
-                "main700": "#520052"
+                "main100": "#EDE4F7",
+                "main200": "#D4C2ED",
+                "main300": "#B89CE3",
+                "main500": "#6C3FBF",
+                "main600": "#5A33A3",
+                "main700": "#482888"
             }
         }
     }

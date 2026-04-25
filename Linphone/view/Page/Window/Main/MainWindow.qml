@@ -78,17 +78,15 @@ AbstractWindow {
 	function initStackViewItem() {
         if(accountProxy && accountProxy.isInitialized) {
             if (accountProxy.haveAccount) openMainPage()
-            else if (SettingsCpp.getFirstLaunch()) mainWindowStackView.replace(welcomePage, StackView.Immediate)
-            else if (SettingsCpp.assistantGoDirectlyToThirdPartySipAccountLogin) mainWindowStackView.replace(sipLoginPage, StackView.Immediate)
-            else mainWindowStackView.replace(loginPage, StackView.Immediate)
+            else {
+                if (SettingsCpp.getFirstLaunch()) SettingsCpp.setFirstLaunch(false)
+                mainWindowStackView.replace(sipLoginPage, StackView.Immediate)
+            }
         }
     }
 	
 	function goToLogin() {
-		if (SettingsCpp.assistantGoDirectlyToThirdPartySipAccountLogin)
-			mainWindowStackView.replace(sipLoginPage)
-		else
-			mainWindowStackView.replace(loginPage)
+		mainWindowStackView.replace(sipLoginPage)
 	}
 
 	function openSSOPage() {

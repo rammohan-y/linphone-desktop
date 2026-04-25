@@ -1,6 +1,6 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BINARY="$SCRIPT_DIR/build/OUTPUT/bin/linphone"
+BINARY="$SCRIPT_DIR/build/OUTPUT/bin/callforge"
 QT_LIB="$HOME/Qt/6.10.0/gcc_64/lib"
 SDK_LIB="$SCRIPT_DIR/build/OUTPUT/lib"
 ERRORS=0
@@ -17,7 +17,7 @@ check() {
 echo "Checking dependencies..."
 
 if [ ! -f "$BINARY" ]; then
-    echo "ERROR: Linphone binary not found at $BINARY"
+    echo "ERROR: CallForge binary not found at $BINARY"
     echo "       Run the build first. See CLAUDE.md for instructions."
     exit 1
 fi
@@ -49,7 +49,7 @@ if [ $ERRORS -gt 0 ]; then
     exit 1
 fi
 
-echo "All checks passed. Starting Linphone..."
+echo "All checks passed. Starting CallForge..."
 export Qt6_DIR="$HOME/Qt/6.10.0/gcc_64/lib/cmake/Qt6"
 export PATH="$HOME/Qt/6.10.0/gcc_64/bin:$PATH"
 export LD_LIBRARY_PATH="$SDK_LIB:$QT_LIB:$LD_LIBRARY_PATH"

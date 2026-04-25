@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=@APPLICATION_NAME@
-GenericName=SIP Phone
+GenericName=AI Call Flow Verification
 Comment=@APPLICATION_DESCRIPTION@
 Type=Application
 Exec=@EXECUTABLE_NAME@ %u

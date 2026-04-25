@@ -1,7 +1,7 @@
-# Linphone Desktop - Project Notes
+# CallForge - Project Notes
 
 ## Overview
-Linphone Desktop v6.2.0 — Qt6/C++17 VoIP softphone using MVVM architecture.
+CallForge (based on Linphone Desktop v6.2.0) — AI-powered call flow verification tool built with Qt6/C++17 using MVVM architecture.
 - C++ backend (LibLinphone SDK) + QML UI (~185 .qml files, ~179 .cpp files)
 - Dual-threaded: SDK thread (CoreModel) + UI thread (QApplication)
 - Linphone SDK v5.5.0 vendored at `external/linphone-sdk/`
@@ -28,7 +28,7 @@ cd build
 cmake .. -DCMAKE_BUILD_PARALLEL_LEVEL=10 -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build . --parallel 10 --config RelWithDebInfo
 cmake --install .
-./OUTPUT/bin/linphone --verbose
+./OUTPUT/bin/callforge --verbose
 ```
 
 ### System Dependencies Installed
@@ -115,7 +115,7 @@ clang-format --style=file -i <modified .hpp/.cpp files>
 - **Core::setUseFiles()** is global, replaces ALL audio I/O — not suitable for per-call use
 
 ### Start Script
-`./start-linphone.sh` runs from `build/OUTPUT/bin/linphone`. After building, run `cmake --install .` so the install step copies the new binary to OUTPUT.
+`./start-linphone.sh` runs from `build/OUTPUT/bin/callforge`. After building, run `cmake --install .` so the install step copies the new binary to OUTPUT.
 
 ## Network Note
 gitlab.linphone.org is unreliable from this network (OVH France datacenter).
