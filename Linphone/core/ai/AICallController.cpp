@@ -23,6 +23,7 @@
 
 #include <linphone/types.h>
 #include <mediastreamer2/mediastream.h>
+#include <mediastreamer2/msaudiomixer.h>
 
 extern "C" {
 LINPHONE_PUBLIC MediaStream *linphone_call_get_stream(LinphoneCall *call, LinphoneStreamType type);
@@ -405,6 +406,17 @@ void AICallController::startAudioCapture() {
 			    ret = audio_stream_mixed_record_start(stream);
 			    qInfo() << "[AICall] mixed_record_start returned:" << ret
 			            << "file:" << QString::fromStdString(captureFilePath);
+			    // Disable outbound_mixer output to the recorder so only callee audio
+			    // (recv_tee) is captured. Without this, the call player's audio flows
+			    // through outbound_mixer into the capture file, causing Gemini to hear
+			    // its own responses and role-switch.
+			    if (ret == 0 && stream->outbound_mixer) {
+				    MSAudioMixerCtl mctl = {0};
+				    mctl.pin = 1;
+				    mctl.param.enabled = FALSE;
+				    ms_filter_call_method(stream->outbound_mixer, MS_AUDIO_MIXER_ENABLE_OUTPUT, &mctl);
+				    qInfo() << "[AICall] Disabled outbound_mixer output pin 1 (record-only callee audio)";
+			    }
 		    } else {
 			    qWarning() << "[AICall] Failed to set record file, features:" << stream->features;
 		    }
@@ -545,8 +557,10 @@ void AICallController::cleanup() {
 	mStreaming = false;
 	mStreamChunkBuffer.clear();
 
-	stopLocalPlayback(mDestructing);
-
+	if (mRemotePlayEofConnection) {
+		disconnect(mRemotePlayEofConnection);
+		mRemotePlayEofConnection = {};
+	}
 	if (mCallEndConnection) {
 		disconnect(mCallEndConnection);
 		mCallEndConnection = {};
@@ -564,20 +578,14 @@ void AICallController::cleanup() {
 	if (callList) {
 		auto callCore = callList->getCurrentCallCore();
 		if (callCore) {
+			emit callCore->lStopFilePlay();
+
 			auto callModel = callCore->getModel();
-			// Blocking: ensure mixed record / player are released on the core thread before the next
-			// call can negotiate media (async teardown caused cross-call lag in AI mode).
 			QMetaObject::invokeMethod(
 			    CoreModel::getInstance().get(),
 			    [callModel]() {
 				    auto call = callModel->getMonitor();
 				    if (!call) return;
-
-				    auto player = call->getPlayer();
-				    if (player) {
-					    player->close();
-					    qInfo() << "[AICall] player closed";
-				    }
 
 				    LinphoneCall *cCall = call->cPtr();
 				    AudioStream *stream =
@@ -647,19 +655,10 @@ void AICallController::onGeminiAudioChunk(QByteArray pcmData) {
 
 	if (!mStreaming) {
 		mStreaming = true;
-		if (mCapturePoller) {
-			QMetaObject::invokeMethod(mCapturePoller, "pauseCapture", Qt::QueuedConnection);
-		}
 		setMicMute(true);
-		startLocalPlayback();
 	}
 
 	QByteArray pcm16k = resample24kTo16k(pcmData);
-
-	if (mLocalPlaybackProcess && mLocalPlaybackProcess->state() == QProcess::Running) {
-		mLocalPlaybackProcess->write(pcm16k);
-	}
-
 	mStreamChunkBuffer.append(pcm16k);
 }
 
@@ -669,65 +668,46 @@ void AICallController::onGeminiTurnComplete(QByteArray fullAudioResponse) {
 		return;
 	}
 
-	if (!mStreamChunkBuffer.isEmpty()) {
-		playResponseToRemote(mStreamChunkBuffer);
-		mStreamChunkBuffer.clear();
-	}
-
 	mStreaming = false;
 
-	if (mLocalPlaybackProcess) {
-		mLocalPlaybackProcess->closeWriteChannel();
-		connect(mLocalPlaybackProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
-		        [this](int, QProcess::ExitStatus) {
-			        qInfo() << "[AICall] aplay finished naturally";
-			        if (mLocalPlaybackProcess) {
-				        delete mLocalPlaybackProcess;
-				        mLocalPlaybackProcess = nullptr;
-			        }
-			        if (mActive) {
-				        setMicMute(false);
-				        if (mCapturePoller) {
-					        QMetaObject::invokeMethod(mCapturePoller, "resumeCapture", Qt::QueuedConnection);
-				        }
-			        }
-		        });
-	} else {
+	if (mStreamChunkBuffer.isEmpty()) {
 		setMicMute(false);
-		if (mCapturePoller) {
-			QMetaObject::invokeMethod(mCapturePoller, "resumeCapture", Qt::QueuedConnection);
-		}
-	}
-}
-
-void AICallController::startLocalPlayback() {
-	if (aiEnvOn("LINPHONE_AI_DISABLE_LOCAL_PLAYBACK")) {
-		qWarning() << "[AICall] LINPHONE_AI_DISABLE_LOCAL_PLAYBACK=1 (not starting aplay)";
 		return;
 	}
-	stopLocalPlayback();
-	mLocalPlaybackProcess = new QProcess(this);
-	mLocalPlaybackProcess->start("aplay", {"-f", "S16_LE", "-r", "16000", "-c", "1", "-t", "raw"});
-	qInfo() << "[AICall] aplay started, pid:" << mLocalPlaybackProcess->processId();
-}
 
-void AICallController::stopLocalPlayback(bool waitForExit) {
-	if (!mLocalPlaybackProcess) return;
-	QProcess *p = mLocalPlaybackProcess;
-	mLocalPlaybackProcess = nullptr;
-	qInfo() << "[AICall] aplay stopping, pid:" << p->processId();
-	p->disconnect(this);
-	p->closeWriteChannel();
-	if (p->state() == QProcess::Running) p->kill();
-	if (waitForExit) {
-		if (!p->waitForFinished(400)) {
-			p->kill();
-			p->waitForFinished(200);
-		}
-		delete p;
+	QString wavPath = writeResponseWav(mStreamChunkBuffer);
+	mStreamChunkBuffer.clear();
+	if (wavPath.isEmpty()) {
+		setMicMute(false);
 		return;
 	}
-	p->deleteLater();
+
+	auto callList = App::getInstance()->getCallList();
+	if (!callList) return;
+	auto callCore = callList->getCurrentCallCore();
+	if (!callCore) return;
+
+	if (mRemotePlayEofConnection) {
+		disconnect(mRemotePlayEofConnection);
+		mRemotePlayEofConnection = {};
+	}
+
+	mRemotePlayEofConnection =
+	    connect(callCore.get(), &CallCore::filePlayFinished, this, &AICallController::resumeAfterPlayback);
+
+	qInfo() << "[AICall] playResponseToRemote via lPlayFile:" << wavPath;
+	emit callCore->lPlayFile(wavPath);
+}
+
+void AICallController::resumeAfterPlayback() {
+	qInfo() << "[AICall] Remote playback finished (filePlayFinished), resuming";
+	if (mRemotePlayEofConnection) {
+		disconnect(mRemotePlayEofConnection);
+		mRemotePlayEofConnection = {};
+	}
+	if (mActive) {
+		setMicMute(false);
+	}
 }
 
 void AICallController::setMicMute(bool mute) {
@@ -755,40 +735,6 @@ void AICallController::setMicMute(bool mute) {
 		    CoreModel::getInstance().get(), [callModel]() { callModel->setMicrophoneMuted(true); },
 		    Qt::QueuedConnection);
 	}
-}
-
-void AICallController::playResponseToRemote(const QByteArray &pcm16k) {
-	if (aiEnvOn("LINPHONE_AI_DISABLE_REMOTE_PLAYBACK")) {
-		qWarning() << "[AICall] LINPHONE_AI_DISABLE_REMOTE_PLAYBACK=1 (skipping remote player->open/start)";
-		return;
-	}
-	QString wavPath = writeResponseWav(pcm16k);
-	if (wavPath.isEmpty()) return;
-
-	auto callList = App::getInstance()->getCallList();
-	if (!callList) return;
-	auto callCore = callList->getCurrentCallCore();
-	if (!callCore) return;
-
-	auto callModel = callCore->getModel();
-	QString path = wavPath;
-
-	qInfo() << "[AICall] playResponseToRemote:" << path << "size:" << pcm16k.size();
-
-	QMetaObject::invokeMethod(
-	    CoreModel::getInstance().get(),
-	    [callModel, path]() {
-		    auto call = callModel->getMonitor();
-		    if (!call) return;
-		    auto player = call->getPlayer();
-		    if (!player) return;
-		    player->close();
-		    std::string pathStd = path.toStdString();
-		    if (player->open(pathStd) == 0) {
-			    player->start();
-		    }
-	    },
-	    Qt::QueuedConnection);
 }
 
 QByteArray AICallController::resample24kTo16k(const QByteArray &pcm24k) {

@@ -9,7 +9,7 @@ Integrate AI caller agents (starting with Google Gemini) that can make phone cal
 - [x] Phase 1a — Single-agent settings (API key, model, etc.) — **to be replaced by Phase 1b**
 - [x] Phase 1b — Multi-agent + multi-scenario settings
 - [x] Phase 2 — Core AI agent backend (audio capture → Gemini → audio inject)
-- [ ] Phase 3 — AI Call button & call window UI (dedicated AI call, auto-show panel)
+- [x] Phase 3 — AI Call button & call window UI (arm-then-dial flow, live transcript panel)
 - [ ] Phase 4 — Transcript export & history
 
 ---
@@ -204,12 +204,37 @@ New files:
 - `Linphone/core/ai/GeminiAgentCore.hpp/cpp` — UI thread core
 - `Linphone/core/ai/GeminiAgentGui.hpp/cpp` — QML wrapper
 
-### Phase 3 — AI Call Button & Call Window UI
-- "AI Call" button in dial bar
-- On click: show scenario selector dropdown/dialog
-- Selected scenario resolves agent config + prompt
-- Call initiated with AI mode, mic muted, agent panel auto-shown
-- Live transcript panel with status, color-coded entries, timestamps
+### Phase 3 — AI Call Button & Call Window UI ✅
+
+**Critical lesson: AI calls must follow the normal call navigation path.** An earlier approach that navigated to a separate AI call UI caused progressive call-window/control lag — each call loaded heavy QML components that never fully unwound, causing RSS growth (~150MB/call) and UI degradation.
+
+**Final design — arm-then-dial:**
+1. User selects a scenario from the "AI Call" popup on CallPage → `AICallControllerCpp.armAICall(index)`
+2. Gemini WebSocket connects during the arming phase (pre-dial), shown via armed banner
+3. User dials normally (history list, contact click, or dialer) — **same navigation path as any call**
+4. On `StreamsRunning`, mixed recording starts and audio polling begins
+5. AI transcript panel opens as a lightweight right panel in CallsWindow (deferred via `Qt.callLater`)
+
+**Key implementation details:**
+- **CaptureFilePoller**: Dedicated thread with 50ms PreciseTimer for file polling (off main thread)
+- **Bidi-ready buffering**: `GeminiLiveClient` accumulates PCM in `mPendingInputPcm` before `setupComplete`, then flushes — prevents losing early callee audio
+- **BlockingQueuedConnection for mixed_record_start**: Ensures capture is running before QML `activeChanged` triggers panel load
+- **Deferred activeChanged**: `QMetaObject::invokeMethod(..., Qt::QueuedConnection)` so `rightPanel.replace()` never runs in the same stack frame as capture setup
+- **Async Gemini teardown**: `cleanupGemini()` uses a joiner thread; `cleanupGeminiBlocking()` for destructor/disarm
+- **CallCore cache in CallList**: `QHash<quintptr, QSharedPointer<CallCore>>` deduplicates wrappers by native `LinphoneCall*` — avoids recreating expensive CallCore/CallModel on each `lUpdate()` cycle
+- **Proper mixed recording stop**: `audio_stream_mixed_record_stop()` (not `callModel->stopRecording()` which is a different mechanism)
+- **Player close in cleanup**: `player->close()` on SDK thread before next call negotiates media
+- **Env kill switches**: `LINPHONE_AI_NOOP`, `LINPHONE_AI_DISABLE_CAPTURE`, `LINPHONE_AI_DISABLE_POLLING`, `LINPHONE_AI_DISABLE_GEMINI`, `LINPHONE_AI_DISABLE_LOCAL_PLAYBACK`, `LINPHONE_AI_DISABLE_REMOTE_PLAYBACK`, `LINPHONE_AI_DISABLE_MIC_MUTE` for isolating regressions
+
+**Files modified:**
+- `Linphone/core/ai/AICallController.hpp/cpp` — Full rewrite with arm/disarm flow, async teardown, blocking capture start
+- `Linphone/core/ai/CaptureFilePoller.hpp/cpp` — New: dedicated polling thread with pause/resume
+- `Linphone/model/ai/GeminiLiveClient.hpp/cpp` — Bidi-ready buffering, debug instrumentation
+- `Linphone/core/call/CallList.hpp/cpp` — CallCore cache by native pointer
+- `Linphone/core/call/CallCore.hpp/cpp` — `getNativePtr()`, perf tracing
+- `Linphone/view/Page/Main/Call/CallPage.qml` — AI Call popup button, armed banner
+- `Linphone/view/Page/Window/Call/CallsWindow.qml` — AI Agent right panel, More Options entry, debug timing
+- `Linphone/core/App.cpp` — AICallController singleton registration, UI init timing
 
 ### Phase 4 — Transcript Export & History
 - Export as .txt / .json from panel
@@ -249,12 +274,14 @@ New files:
 ## Design Decisions (resolved)
 - **Multi-agent**: Users can configure multiple vendor profiles (agent configs)
 - **Multi-scenario**: Users define reusable call scripts, each linked to an agent
-- **AI Call selects scenario**: At call time, user picks a scenario which resolves agent + prompt
-- **No user mic interference**: Mic stays muted for AI calls
+- **Arm-then-dial**: User arms a scenario pre-call, then dials normally — AI call uses the same navigation/UI path as a regular call to avoid progressive QML degradation
+- **Mic muted during AI playback**: Prevents barge-in detection on remote party hearing AI audio through speakers
+- **Capture position advance after playback**: Skips AI's own played-back audio in the capture file to prevent Gemini hearing itself
 - **Timestamps**: Transcript includes timestamps relative to call start
-- **Prominent AI indicator**: Call header shows badge when AI mode active
+- **Prominent AI indicator**: Armed banner on CallPage, status in right panel during call
 - **Multi-provider future**: Agent configs include `provider` field for OpenAI etc.
 - **Storage**: Indexed INI sections in linphonerc (shortcuts pattern)
+- **Local + remote audio**: `aplay` streams to speakers for local monitoring; `call->getPlayer()` sends to remote via RTP
 
 ## Future Enhancements
 
@@ -268,3 +295,5 @@ New files:
 - 2026-04-23: Phase 1a implemented — flat single-agent settings in SettingsModel/SettingsCore/QML
 - 2026-04-23: Fixed AI Agent settings — moved to separate tab (AIAgentSettingsLayout.qml)
 - 2026-04-24: Design change — multi-agent + multi-scenario architecture. Replacing flat settings with list-based storage using indexed INI sections (shortcuts pattern). Plan updated for Phase 1b.
+- 2026-04-24: Phase 2 complete — AICallController + GeminiLiveClient with mixed recording, resampling, aplay streaming, remote playback via call player
+- 2026-04-25: Phase 3 complete — arm-then-dial flow, CaptureFilePoller on dedicated thread, CallCore cache to prevent wrapper duplication, async Gemini teardown, proper mixed_record_stop, env kill switches for regression isolation. Key fix: keeping AI call on normal navigation path eliminated progressive UI lag and RSS growth.

@@ -6,8 +6,6 @@
 #include <QByteArray>
 #include <QFile>
 #include <QObject>
-#include <QProcess>
-#include <QStringList>
 #include <QThread>
 
 #include <functional>
@@ -70,12 +68,10 @@ private:
 	void cleanupGeminiBlocking();
 	void setupGeminiClient(std::function<void()> afterThreadStarted = {});
 	void startAudioCapture();
-	void startLocalPlayback();
-	void stopLocalPlayback(bool waitForExit = false);
 	void setMicMute(bool mute);
-	void playResponseToRemote(const QByteArray &pcm16k);
 	void onCallStateChanged(LinphoneEnums::CallState state);
 	void onGeminiReadyForCall();
+	void resumeAfterPlayback();
 
 	int mArmedScenarioIndex = -1;
 	bool mGeminiReady = false;
@@ -93,11 +89,13 @@ private:
 
 	int mResponseFileCounter = 0;
 	QString mTempDir;
-	QProcess *mLocalPlaybackProcess = nullptr;
 	QByteArray mStreamChunkBuffer;
 	bool mStreaming = false;
 	bool mMicWasMuted = false;
 	bool mDidStartMixedRecord = false;
+	bool mLocalPlayDone = false;
+	bool mRemotePlayDone = false;
+	QMetaObject::Connection mRemotePlayEofConnection;
 
 	QString mTranscript;
 	QString mStatus;
