@@ -47,7 +47,32 @@ AbstractWindow {
     property Item firstButtonInBottomTab : mainWindow.startingCall ? endCallButton : (videoCameraButton.visible && videoCameraButton.enabled ? videoCameraButton : audioMicrophoneButton)
     property Item lastButtonInBottomTab : mainWindow.startingCall ? Utils.getLastFocusableItemInItem(controlCallButtons) : endCallButton
 
+    property double __uiInitT0: Date.now()
+    // Loader perf: time spent in each callState + transitions (window-relative).
+    property int __callLoaderPrevState: -999
+    property double __callLoaderStateAt: Date.now()
+    Component.onCompleted: {
+        __callLoaderStateAt = Date.now()
+        __callLoaderPrevState = mainWindow.callState
+        console.log("[UIInit] CallsWindow.qml Component.onCompleted dt_ms=", (Date.now() - __uiInitT0),
+                    "callState=", mainWindow.callState,
+                    "haveCall=", callsModel.haveCall,
+                    "visible=", mainWindow.visible)
+    }
+
     onCallStateChanged: {
+        const _now = Date.now()
+        const _prev = mainWindow.__callLoaderPrevState
+        const _dwell = _now - mainWindow.__callLoaderStateAt
+        console.log("[CallLoader-Debug] callState=", mainWindow.callState, " prev=", _prev, "ms_in_prev_state=",
+                    (_prev === -999 ? 0 : _dwell), "since_win_ms=", _now - mainWindow.__uiInitT0, " startingCall=",
+                    mainWindow.startingCall, " haveCall=", callsModel.haveCall, " currentItem=",
+                    middleItemStackView.currentItem ? middleItemStackView.currentItem.objectName : "(none)")
+        mainWindow.__callLoaderStateAt = _now
+        mainWindow.__callLoaderPrevState = mainWindow.callState
+        console.log("[UIInit] CallsWindow.qml callStateChanged dt_ms=", (Date.now() - __uiInitT0),
+                    "callState=", mainWindow.callState,
+                    "startingCall=", mainWindow.startingCall)
         if (callState === LinphoneEnums.CallState.Connected) {
             if (middleItemStackView.currentItem.objectName != "inCallItem") {
                 middleItemStackView.replace(inCallItem)
@@ -116,6 +141,21 @@ AbstractWindow {
         }
     }
     
+    Connections {
+        target: AICallControllerCpp
+        function onActiveChanged() {
+            if (AICallControllerCpp.active) {
+                rightPanel.visible = true
+                // Defer: replace is heavy; must not run on the same main-thread tick as capture setup.
+                Qt.callLater(function () {
+                    console.log("[UIInit] CallsWindow.qml replacing rightPanel -> aiAgentPanel dt_ms=",
+                                (Date.now() - __uiInitT0))
+                    rightPanel.replace(aiAgentPanel)
+                })
+            }
+        }
+    }
+
     signal keyPressedOnDialer(KeyEvent event)
 
 
@@ -1368,6 +1408,151 @@ AbstractWindow {
                 }
             }
             Component {
+                id: aiAgentPanel
+                Control.Control {
+                    objectName: "aiAgentPanel"
+                    width: parent.width
+                    Keys.onEscapePressed: event => {
+                        rightPanel.visible = false
+                        event.accepted = true
+                    }
+
+                    ColumnLayout {
+                        width: parent.width
+                        height: rightPanel.contentItemHeight
+                        spacing: Utils.getSizeWithScreenRatio(10)
+
+                        Text {
+                            text: "AI Agent"
+                            color: DefaultStyle.main2_600
+                            font {
+                                pixelSize: Utils.getSizeWithScreenRatio(16)
+                                weight: 600
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: aiStatusText.implicitHeight + Utils.getSizeWithScreenRatio(12)
+                            radius: Utils.getSizeWithScreenRatio(6)
+                            color: AICallControllerCpp.active ? DefaultStyle.success_500_main : DefaultStyle.grey_200
+                            visible: AICallControllerCpp.status.length > 0
+                            Text {
+                                id: aiStatusText
+                                anchors.centerIn: parent
+                                width: parent.width - Utils.getSizeWithScreenRatio(16)
+                                text: AICallControllerCpp.status
+                                color: AICallControllerCpp.active ? DefaultStyle.grey_0 : DefaultStyle.main2_600
+                                font.pixelSize: Utils.getSizeWithScreenRatio(12)
+                                wrapMode: Text.Wrap
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: Utils.getSizeWithScreenRatio(6)
+                            visible: !AICallControllerCpp.active
+
+                            Text {
+                                text: "Select a scenario to start:"
+                                color: DefaultStyle.main2_400
+                                font.pixelSize: Utils.getSizeWithScreenRatio(12)
+                            }
+
+                            Repeater {
+                                model: SettingsCpp.aiScenarios
+                                delegate: Rectangle {
+                                    Layout.fillWidth: true
+                                    height: scenarioRow.implicitHeight + Utils.getSizeWithScreenRatio(12)
+                                    radius: Utils.getSizeWithScreenRatio(8)
+                                    border.color: DefaultStyle.grey_200
+                                    border.width: 1
+                                    color: "transparent"
+
+                                    RowLayout {
+                                        id: scenarioRow
+                                        anchors.fill: parent
+                                        anchors.margins: Utils.getSizeWithScreenRatio(6)
+
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 1
+                                            Text {
+                                                text: modelData.name || "Unnamed"
+                                                font: Typography.p2l
+                                                color: DefaultStyle.main2_600
+                                            }
+                                            Text {
+                                                property var agentNames: SettingsCpp.getAgentNames()
+                                                text: {
+                                                    var idx = modelData.agentIndex || 0
+                                                    var name = (agentNames && idx < agentNames.length) ? agentNames[idx] : "No agent"
+                                                    return name
+                                                }
+                                                font.pixelSize: Utils.getSizeWithScreenRatio(11)
+                                                font.italic: true
+                                                color: DefaultStyle.main2_400
+                                            }
+                                        }
+
+                                        SmallButton {
+                                            style: ButtonStyle.main
+                                            text: "Start"
+                                            onClicked: {
+                                                AICallControllerCpp.startAICall(index)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Text {
+                                visible: SettingsCpp.aiScenarios.length === 0
+                                text: "No scenarios configured.\nGo to Settings → AI Scenarios to add one."
+                                color: DefaultStyle.main2_400
+                                font.pixelSize: Utils.getSizeWithScreenRatio(12)
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        Control.ScrollView {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            visible: AICallControllerCpp.active
+                            clip: true
+
+                            Text {
+                                id: transcriptText
+                                width: parent.width
+                                text: AICallControllerCpp.transcript || "Waiting for conversation..."
+                                color: DefaultStyle.main2_600
+                                font.pixelSize: Utils.getSizeWithScreenRatio(12)
+                                font.family: "monospace"
+                                wrapMode: Text.Wrap
+
+                                onTextChanged: {
+                                    if (parent && parent.contentItem) {
+                                        parent.contentItem.contentY = Math.max(0, parent.contentItem.contentHeight - parent.height)
+                                    }
+                                }
+                            }
+                        }
+
+                        MediumButton {
+                            Layout.fillWidth: true
+                            visible: AICallControllerCpp.active
+                            style: ButtonStyle.secondary
+                            text: "Stop AI Agent"
+                            onClicked: AICallControllerCpp.stopAICall()
+                        }
+
+                        Item { Layout.fillHeight: true; visible: !AICallControllerCpp.active }
+                    }
+                }
+            }
+            Component {
                 id: participantListPanel
                 Control.Control {
                     width: parent.width
@@ -1545,8 +1730,18 @@ AbstractWindow {
             Component {
                 id: inCallItem
                 Loader {
+                    id: inCallItemRootLoader
                     objectName: "inCallItem"
                     asynchronous: false
+                    property double __t0: Date.now()
+                    onStatusChanged: {
+                        console.log("[CallLoader-Debug] inCallItemRootLoader status=", inCallItemRootLoader.status, " at_ms=",
+                                    Date.now() - inCallItemRootLoader.__t0, " (relative to this Loader)")
+                    }
+                    onLoaded: {
+                        console.log("[CallLoader-Debug] inCallItemRootLoader onLoaded at_ms=",
+                                    Date.now() - inCallItemRootLoader.__t0)
+                    }
                     sourceComponent: Item {
                         CallLayout {
                             anchors.fill: parent
@@ -2008,6 +2203,20 @@ AbstractWindow {
                                 onClicked: {
                                     rightPanel.visible = true
                                     rightPanel.replace(audioPlayerPanel)
+                                    moreOptionsButton.close()
+                                }
+                            }
+                            IconLabelButton {
+                                Layout.fillWidth: true
+                                icon.source: AppIcons.micro
+                                text: "AI Agent"
+                                icon.width: Utils.getSizeWithScreenRatio(32)
+                                icon.height: Utils.getSizeWithScreenRatio(32)
+                                style: ButtonStyle.noBackground
+                                visible: mainWindow.call && !mainWindow.conference
+                                onClicked: {
+                                    rightPanel.visible = true
+                                    rightPanel.replace(aiAgentPanel)
                                     moreOptionsButton.close()
                                 }
                             }

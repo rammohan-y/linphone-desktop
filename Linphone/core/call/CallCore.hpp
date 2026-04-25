@@ -145,6 +145,9 @@ public:
 	~CallCore();
 	void setSelf(QSharedPointer<CallCore> me);
 
+	// Stable identity of the underlying call (for caching/diagnostics).
+	quintptr getNativePtr() const;
+
 	QString getRemoteAddress() const;
 	QString getLocalAddress() const;
 
@@ -323,6 +326,7 @@ signals:
 	    Q_INVOKABLE void updateStreams();
 	*/
 private:
+	quintptr mNativePtr = 0;
 	std::shared_ptr<CallModel> mCallModel;
 	QSharedPointer<ConferenceCore> mConference;
 	QSharedPointer<VideoSourceDescriptorCore> mVideoSourceDescriptor;

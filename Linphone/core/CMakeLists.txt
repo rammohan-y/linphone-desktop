@@ -1,4 +1,7 @@
 list(APPEND _LINPHONEAPP_SOURCES
+	core/ai/AICallController.cpp
+	core/ai/CaptureFilePoller.cpp
+
 	core/account/AccountCore.cpp
 	core/account/AccountGui.cpp
 	core/account/AccountList.cpp

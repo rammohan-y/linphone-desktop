@@ -10,9 +10,18 @@ Popup {
 	property string text
 	property bool cancelButtonVisible: false
 	property var callback
+	property double __callLoaderOpenT0: 0
 	modal: true
 	closePolicy: Control.Popup.NoAutoClose
 	anchors.centerIn: parent
+	onOpened: {
+		__callLoaderOpenT0 = Date.now()
+		console.log("[CallLoader-Debug] LoadingPopup opened text=\"", mainItem.text, "\"")
+	}
+	onClosed: {
+		var w = (Date.now() - __callLoaderOpenT0)
+		console.log("[CallLoader-Debug] LoadingPopup closed text=\"", mainItem.text, "\" was_visible_ms=", w)
+	}
     padding: Utils.getSizeWithScreenRatio(20)
 	underlineColor: DefaultStyle.main1_500_main
     radius: Utils.getSizeWithScreenRatio(15)

@@ -83,7 +83,13 @@ Item {
 			id: noCameraLayout
 			anchors.fill: parent
 			visible: !cameraLoader.active || cameraLoader.status != Loader.Ready || !cameraLoader.item.isReady
+			onVisibleChanged: {
+				var ir = (cameraLoader.status === Loader.Ready && cameraLoader.item) ? cameraLoader.item.isReady : false
+				console.log("[CallLoader-Debug] Sticker noCameraLayout", mainItem.qmlName, " visible=", noCameraLayout.visible, " callState=",
+					mainItem.callState, " camActive=", cameraLoader.active, " loaderSt=", cameraLoader.status, " camReady=", ir)
+			}
 			ColumnLayout {
+                id: outgoingRingSpinnerColumn
 				anchors.top: parent.top
                 anchors.topMargin: Utils.getSizeWithScreenRatio(81)
 				anchors.horizontalCenter: parent.horizontalCenter
@@ -94,6 +100,11 @@ Item {
 						|| mainItem.callState === LinphoneEnums.CallState.OutgoingRinging
 						|| mainItem.callState === LinphoneEnums.CallState.OutgoingEarlyMedia
 						|| mainItem.callState === LinphoneEnums.CallState.IncomingReceived)
+                onVisibleChanged: {
+					console.log("[CallLoader-Debug] Sticker outgoingRingBusy", mainItem.qmlName, " visible=",
+						outgoingRingSpinnerColumn.visible, " callState=", mainItem.callState,
+						" (BusyIndicator=ring/early)")
+				}
 				BusyIndicator {
 					indicatorColor: DefaultStyle.main2_100
 					Layout.alignment: Qt.AlignHCenter

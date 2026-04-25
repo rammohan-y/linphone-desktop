@@ -7,8 +7,8 @@ Integrate AI caller agents (starting with Google Gemini) that can make phone cal
 - [x] Research — audio capture, playback, available libraries
 - [x] Research — streaming vs file I/O, SDK audio APIs
 - [x] Phase 1a — Single-agent settings (API key, model, etc.) — **to be replaced by Phase 1b**
-- [ ] Phase 1b — Multi-agent + multi-scenario settings (current work)
-- [ ] Phase 2 — Core AI agent backend (audio capture → Gemini → audio inject)
+- [x] Phase 1b — Multi-agent + multi-scenario settings
+- [x] Phase 2 — Core AI agent backend (audio capture → Gemini → audio inject)
 - [ ] Phase 3 — AI Call button & call window UI (dedicated AI call, auto-show panel)
 - [ ] Phase 4 — Transcript export & history
 

@@ -1,4 +1,6 @@
 list(APPEND _LINPHONEAPP_SOURCES
+	model/ai/GeminiLiveClient.cpp
+
 	model/account/AccountDeviceModel.cpp
 	model/account/AccountModel.cpp
 	model/account/AccountManager.cpp

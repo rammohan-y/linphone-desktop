@@ -24,6 +24,7 @@
 
 #include <QCoreApplication>
 #include <QDirIterator>
+#include <QElapsedTimer>
 #include <QFileSelector>
 #include <QFontDatabase>
 #include <QGuiApplication>
@@ -46,6 +47,7 @@
 #include "core/address-books/carddav/CarddavProxy.hpp"
 #include "core/address-books/ldap/LdapGui.hpp"
 #include "core/address-books/ldap/LdapProxy.hpp"
+#include "core/ai/AICallController.hpp"
 #include "core/call-history/CallHistoryProxy.hpp"
 #include "core/call/CallCore.hpp"
 #include "core/call/CallGui.hpp"
@@ -974,6 +976,10 @@ void App::initCppInterfaces() {
 	    "SettingsCpp", 1, 0, "SettingsCpp",
 	    [this](QQmlEngine *engine, QJSEngine *) -> QObject * { return mSettings.get(); });
 
+	qmlRegisterSingletonType<AICallController>(
+	    Constants::MainQmlUri, 1, 0, "AICallControllerCpp",
+	    [](QQmlEngine *, QJSEngine *) -> QObject * { return new AICallController(); });
+
 	qmlRegisterSingletonType<AccessibilityHelper>(
 	    "AccessibilityHelperCpp", 1, 0, "AccessibilityHelperCpp",
 	    [](QQmlEngine *engine, QJSEngine *) -> QObject * { return new AccessibilityHelper(engine); });
@@ -1304,7 +1310,15 @@ QQuickWindow *App::getCallsWindow() {
 
 QQuickWindow *App::getOrCreateCallsWindow(QVariant callGui) {
 	mustBeInMainThread(getClassName());
+	static QElapsedTimer sUiInitTimer;
+	if (!sUiInitTimer.isValid()) sUiInitTimer.start();
+
+	const bool hadCallsWindow = (mCallsWindow != nullptr);
+	const qint64 t0 = sUiInitTimer.elapsed();
+	qInfo() << "[UIInit] getOrCreateCallsWindow enter hadWindow:" << hadCallsWindow
+	        << "callGuiValid:" << (!callGui.isNull() && callGui.isValid()) << "t_ms:" << t0;
 	if (!mCallsWindow) {
+		const qint64 tCreate0 = sUiInitTimer.elapsed();
 		const QUrl callUrl("qrc:/qt/qml/Linphone/view/Page/Window/Call/CallsWindow.qml");
 
 		lInfo() << log().arg("Creating subwindow: `%1`.").arg(callUrl.toString());
@@ -1338,8 +1352,12 @@ QQuickWindow *App::getOrCreateCallsWindow(QVariant callGui) {
 		// window->setParent(mMainWindow);
 		mCallsWindow = window;
 		connect(mCallsWindow, &QQuickWindow::activeChanged, this, &App::handleAppActivity);
+		qInfo() << "[UIInit] CallsWindow created t_ms:" << sUiInitTimer.elapsed()
+		        << "dt_ms:" << (sUiInitTimer.elapsed() - tCreate0);
 	}
 	if (!callGui.isNull() && callGui.isValid()) mCallsWindow->setProperty("call", callGui);
+	qInfo() << "[UIInit] getOrCreateCallsWindow exit hadWindow:" << hadCallsWindow << "t_ms:" << sUiInitTimer.elapsed()
+	        << "dt_ms:" << (sUiInitTimer.elapsed() - t0);
 	return mCallsWindow;
 }
 

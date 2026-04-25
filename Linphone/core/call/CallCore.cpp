@@ -28,9 +28,43 @@
 #include "tool/Utils.hpp"
 #include "tool/thread/SafeConnection.hpp"
 
+#include <QDir>
 #include <QQuickWindow>
+
+#include <fstream>
 #include <linphone++/player.hh>
 #include <linphone++/player_listener.hh>
+
+static inline void logCallPerfResources(const char *label) {
+	if (!qEnvironmentVariableIsSet("LINPHONE_CALL_PERF_TRACE")) return;
+
+	long rssKb = 0;
+	int threadCount = 0;
+	int fdCount = 0;
+
+	std::ifstream statm("/proc/self/statm");
+	if (statm.is_open()) {
+		long pages = 0;
+		statm >> pages >> pages;
+		rssKb = pages * 4;
+	}
+
+	std::ifstream status("/proc/self/status");
+	if (status.is_open()) {
+		std::string line;
+		while (std::getline(status, line)) {
+			if (line.find("Threads:") == 0) {
+				threadCount = std::stoi(line.substr(8));
+				break;
+			}
+		}
+	}
+
+	QDir fdDir("/proc/self/fd");
+	fdCount = fdDir.entryList(QDir::NoDotAndDotDot).size();
+
+	qInfo() << "[CallPerf]" << label << "RSS_KB=" << rssKb << "Threads=" << threadCount << "FDs=" << fdCount;
+}
 
 class CallFilePlayerListener : public linphone::PlayerListener {
 public:
@@ -125,6 +159,7 @@ CallCore::CallCore(const std::shared_ptr<linphone::Call> &call) : QObject(nullpt
 	App::getInstance()->mEngine->setObjectOwnership(this, QQmlEngine::CppOwnership);
 	// Should be call from model Thread
 	mustBeInLinphoneThread(getClassName());
+	mNativePtr = call ? reinterpret_cast<quintptr>(call->cPtr()) : 0;
 	mDir = LinphoneEnums::fromLinphone(call->getDir());
 	mCallModel = Utils::makeQObject_ptr<CallModel>(call);
 	mCallModel->setSelf(mCallModel);
@@ -200,6 +235,10 @@ CallCore::CallCore(const std::shared_ptr<linphone::Call> &call) : QObject(nullpt
 	mConferenceVideoLayout = LinphoneEnums::fromLinphone(SettingsModel::getInstance()->getDefaultConferenceLayout());
 	auto videoSource = call->getVideoSource();
 	mVideoSourceDescriptor = VideoSourceDescriptorCore::create(videoSource ? videoSource->clone() : nullptr);
+}
+
+quintptr CallCore::getNativePtr() const {
+	return mNativePtr;
 }
 
 CallCore::~CallCore() {
@@ -624,6 +663,11 @@ LinphoneEnums::CallState CallCore::getState() const {
 void CallCore::setState(LinphoneEnums::CallState state) {
 	mustBeInMainThread(log().arg(Q_FUNC_INFO));
 	if (mState != state) {
+		if (qEnvironmentVariableIsSet("LINPHONE_CALL_PERF_TRACE")) {
+			qInfo() << "[CallPerf] state" << static_cast<int>(mState) << "->" << static_cast<int>(state)
+			        << "call=" << this << "native=" << Qt::hex << mNativePtr << Qt::dec << "callId=" << mCallId;
+			logCallPerfResources("on-state-change");
+		}
 		mState = state;
 		emit stateChanged(mState);
 	}

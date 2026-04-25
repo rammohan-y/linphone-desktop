@@ -180,7 +180,10 @@ ApplicationWindow {
                 addressPopup.parent = parentItem
                 addressPopup.contact = contact
                 addressPopup.addressChosen.connect(function(address) {
-                    UtilsCpp.createCall(address, {'localVideoEnabled': videoEnabled})
+                    // Do not pass {localVideoEnabled: false}. It changes the call-creation path/params and
+                    // makes audio calls differ from the normal createCall(address) flow.
+                    if (videoEnabled) UtilsCpp.createCall(address, {'localVideoEnabled': true})
+                    else UtilsCpp.createCall(address)
                     addressPopup.close()
                 })
                 addressPopup.open()
@@ -191,7 +194,10 @@ ApplicationWindow {
                         ? ""
                         : contact.core.phoneNumbers[0].address
                     : contact.core.defaultAddress
-                if (addressToCall.length != 0) UtilsCpp.createCall(addressToCall, {'localVideoEnabled':videoEnabled})
+                if (addressToCall.length != 0) {
+                    if (videoEnabled) UtilsCpp.createCall(addressToCall, {'localVideoEnabled': true})
+                    else UtilsCpp.createCall(addressToCall)
+                }
             }
         }
     }

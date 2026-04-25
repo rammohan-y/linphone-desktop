@@ -24,7 +24,9 @@
 #include "../proxy/ListProxy.hpp"
 #include "tool/AbstractObject.hpp"
 #include "tool/thread/SafeConnection.hpp"
+#include <QHash>
 #include <QLocale>
+#include <QMutex>
 
 class CallGui;
 class CallCore;
@@ -70,6 +72,10 @@ private:
 
 	bool mHaveCall = false;
 	QSharedPointer<CallCore> mCurrentCall;
+	// Cache CallCore per underlying linphone::Call pointer to avoid recreating heavy wrappers on each lUpdate.
+	// Recreating CallCore/CallModel repeatedly causes large RSS spikes and call-by-call degradation.
+	QHash<quintptr, QSharedPointer<CallCore>> mCallCoreByNativePtr;
+	mutable QMutex mCallCoreCacheMutex;
 	QSharedPointer<SafeConnection<CallList, CoreModel>> mModelConnection;
 	DECLARE_ABSTRACT_OBJECT
 };

@@ -88,6 +88,13 @@ QString QtLogger::formatLog(QString contextFile, int contextLine, QString msg) {
 void QtLogger::onQtLog(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
 	QString out;
 	QString message = QtLogger::formatLog(context.file, context.line, msg);
+	// Performance guard: QML console.log() is very chatty and we fflush() every line.
+	// Our UI perf instrumentation uses the "[CallLoader-Debug]" tag; keep it opt-in to avoid
+	// impacting normal call performance when running with --verbose.
+	if (message.contains("[CallLoader-Debug]") && !qEnvironmentVariableIsSet("LINPHONE_CALLLOADER_DEBUG")) {
+		emit gLogger.qtLogReceived(type, message);
+		return;
+	}
 	if (gLogger.mVerboseEnabled || !gLogger.isSignalConnected(QMetaMethod::fromSignal(&QtLogger::qtLogReceived))) {
 		gLogger.printLog(&out, Constants::AppDomain, LinphoneEnums::toLinphone(type),
 		                 Utils::appStringToCoreString(message));

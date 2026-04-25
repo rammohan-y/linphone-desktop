@@ -28,6 +28,7 @@
 #include "tool/Utils.hpp"
 #include <QDebug>
 #include <QDirIterator>
+#include <QElapsedTimer>
 #include <QLibrary>
 #include <QTest>
 
@@ -301,9 +302,21 @@ bool ToolModel::createCall(const QString &sipAddress,
                            const QHash<QString, QString> &headers,
                            linphone::MediaEncryption mediaEncryption,
                            QString *errorMessage) {
+	const bool callCreateDebug = qEnvironmentVariableIsSet("LINPHONE_CALLCREATE_DEBUG");
 	bool waitRegistrationForCall = true; // getSettingsModel()->getWaitRegistrationForCall()
 
 	std::shared_ptr<linphone::Core> core = CoreModel::getInstance()->getCore();
+
+	if (callCreateDebug) {
+		auto acc = core ? core->getDefaultAccount() : nullptr;
+		const auto accState = acc ? static_cast<int>(acc->getState()) : -1;
+		const auto accId = acc && acc->getParams() && acc->getParams()->getIdentityAddress()
+		                       ? QString::fromStdString(acc->getParams()->getIdentityAddress()->asStringUriOnly())
+		                       : QString("(none)");
+		lInfo() << "[CallCreate-Debug] request sipAddress=" << sipAddress << " options=" << options
+		        << " mediaEncryption=" << static_cast<int>(mediaEncryption) << " defaultAccount=" << accId
+		        << " regState=" << accState;
+	}
 
 	if (waitRegistrationForCall) {
 		std::shared_ptr<linphone::Account> currentAccount = core->getDefaultAccount();
@@ -335,6 +348,12 @@ bool ToolModel::createCall(const QString &sipAddress,
 	bool isConference = !!core->findConferenceInformationFromUri(address);
 	if (isConference) mediaEncryption = linphone::MediaEncryption::ZRTP;
 
+	if (callCreateDebug) {
+		lInfo() << "[CallCreate-Debug] interpretedAddress="
+		        << QString::fromStdString(address ? address->asStringUriOnly() : std::string("(null)"))
+		        << " isConference=" << isConference;
+	}
+
 	if (SettingsModel::dndEnabled(core->getConfig())) { // Force tones for outgoing calls when in DND mode (ringback,
 		                                                // dtmf, etc … ) disabled again when no more calls are running.
 		SettingsModel::getInstance()->setCallToneIndicationsEnabled(true);
@@ -365,7 +384,14 @@ bool ToolModel::createCall(const QString &sipAddress,
 	}
 
 	if (core->getDefaultAccount()) params->setAccount(core->getDefaultAccount());
+	QElapsedTimer t;
+	if (callCreateDebug) t.start();
 	auto call = core->inviteAddressWithParams(address, params);
+	if (callCreateDebug) {
+		lInfo() << "[CallCreate-Debug] inviteAddressWithParams returned=" << (call != nullptr)
+		        << " dt_ms=" << t.elapsed() << " localVideoEnabled=" << localVideoEnabled
+		        << " micEnabled=" << micEnabled << " encryption=" << static_cast<int>(mediaEncryption);
+	}
 	return call != nullptr;
 
 	/* TODO transfer

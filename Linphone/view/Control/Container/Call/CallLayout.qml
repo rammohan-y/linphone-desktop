@@ -22,6 +22,8 @@ Item {
 	property int conferenceLayout: call ? call.core.conferenceVideoLayout : LinphoneEnums.ConferenceLayout.ActiveSpeaker
 	property int participantDeviceCount: conference ? conference.core.participantDeviceCount : -1
 	property int lastConfLayoutBeforeSharing: -1
+	property int _callLayoutAssignSeq: 0
+	property real _callLayoutSourceSetAt: 0
 	property string localAddress: call 
 		? call.conference
 			? call.conference.core.me.core.sipAddress
@@ -50,7 +52,14 @@ Item {
 	}
 
 	function setConferenceLayout() {
+		var scheduleT = Date.now()
 		Qt.callLater(function() {
+			var firedT = Date.now()
+			var schedDelay = firedT - scheduleT
+			console.log("[CallLoader-Debug] setConferenceLayout callLater_fired sched_delay_ms=", schedDelay, " callState=",
+				mainItem.callState, " partDevCount=", mainItem.participantDeviceCount, " confLayout=",
+				mainItem.conferenceLayout)
+			var assignT0 = Date.now()
 			callLayout.sourceComponent = undefined	// unload old view before opening the new view to avoid conflicts in Video UI.
 			// If stop sharing screen, reset conference layout to the previous one
 			if (mainItem.conference && !mainItem.conference.core.isLocalScreenSharing && mainItem.lastConfLayoutBeforeSharing !== -1) {
@@ -64,6 +73,12 @@ Item {
 						? waitingForOthersComponent
 						: gridComponent
 				: activeSpeakerComponent
+			var assignDt = Date.now() - assignT0
+			mainItem._callLayoutAssignSeq += 1
+			mainItem._callLayoutSourceSetAt = Date.now()
+			if (assignDt > 0)
+				console.log("[CallLoader-Debug] setConferenceLayout source_reassigned assign_seq=",
+					mainItem._callLayoutAssignSeq, " assign_js_ms=", assignDt)
 		})
 	}
 
@@ -97,6 +112,15 @@ Item {
 		sourceComponent: mainItem.participantDeviceCount === 0
 			? waitingForOthersComponent
 			: activeSpeakerComponent
+		onStatusChanged: {
+			if (status === Loader.Ready && mainItem._callLayoutSourceSetAt > 0) {
+				var t = Date.now() - mainItem._callLayoutSourceSetAt
+				console.log("[CallLoader-Debug] callLayout Ready from_last_source_set_ms=", t, " seq=",
+					mainItem._callLayoutAssignSeq, " callState=", mainItem.callState)
+			} else
+				console.log("[CallLoader-Debug] callLayout status=", status, " (not end-to-end timing) callState=",
+					mainItem.callState, " seq=", mainItem._callLayoutAssignSeq)
+		}
 	}
 
 	Sticker {

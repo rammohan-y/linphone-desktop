@@ -38,8 +38,24 @@ QSharedPointer<CallList> CallList::create() {
 }
 
 QSharedPointer<CallCore> CallList::createCallCore(const std::shared_ptr<linphone::Call> &call) {
+	// Cache by native pointer so lUpdate() doesn't recreate wrappers (very expensive).
+	quintptr key = call ? reinterpret_cast<quintptr>(call->cPtr()) : 0;
+	if (key == 0) {
+		auto callCore = CallCore::create(call);
+		connect(callCore.get(), &CallCore::stateChanged, this, &CallList::onStateChanged);
+		return callCore;
+	}
+
+	// IMPORTANT: Create+insert while holding the mutex so we never create duplicate CallCore
+	// wrappers for the same underlying LinphoneCall* (duplicates caused large RSS spikes and
+	// UI degradation call-by-call).
+	QMutexLocker locker(&mCallCoreCacheMutex);
+	auto it = mCallCoreByNativePtr.find(key);
+	if (it != mCallCoreByNativePtr.end() && !it.value().isNull()) return it.value();
+
 	auto callCore = CallCore::create(call);
 	connect(callCore.get(), &CallCore::stateChanged, this, &CallList::onStateChanged);
+	mCallCoreByNativePtr.insert(key, callCore);
 	return callCore;
 }
 
@@ -215,6 +231,12 @@ void CallList::onStateChanged() {
 					setCurrentCallCore(nextCall);
 				}
 				bool removed = remove(sharedCall);
+				// Drop cache entries so the wrapper can be destroyed.
+				const quintptr key = call->getNativePtr();
+				if (key != 0) {
+					QMutexLocker locker(&mCallCoreCacheMutex);
+					mCallCoreByNativePtr.remove(key);
+				}
 			}
 			break;
 		}
