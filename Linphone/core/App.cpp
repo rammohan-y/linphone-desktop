@@ -1705,13 +1705,6 @@ void App::setSysTrayIcon() {
 		menu->addAction(restoreAction);
 		menu->addSeparator();
 	}
-	menu->addAction(markAllReadAction);
-	//: Check for update
-	if (mSettings->isCheckForUpdateAvailable()) {
-		QAction *checkForUpdateAction = new QAction(tr("check_for_update"), root);
-		root->connect(checkForUpdateAction, &QAction::triggered, this, [this] { checkForUpdate(true); });
-		menu->addAction(checkForUpdateAction);
-	}
 	menu->addAction(quitAction);
 	if (!mSystemTrayIcon) {
 		systemTrayIcon->setContextMenu(menu); // This is a Qt bug. We cannot call setContextMenu more than once. So

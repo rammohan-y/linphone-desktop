@@ -1,5 +1,128 @@
 <svg width="1512" height="108" viewBox="0 0 1512 108" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M0 0.29875L380.282 54.6952L577.111 36.1953L660.188 0L835.288 48.2605L1126.7 0.804341L1381.42 36.2792L1512 0.862443L1512 108H0V0.29875Z" fill="#D4C2ED"/>
-<path d="M0 38.069L343.217 8.6521L450.578 30.1425L546.436 27.9563L651.241 50.4778L819.416 22.0956L1015.14 60.013L1140.76 31.1736L1348.75 75.0722L1473.64 25.1305L1512 38.069L1512 107H0V38.069Z" fill="#B89CE3"/>
-<path d="M0 108V101.901L184.732 59.5213L402.005 71.6998L500.424 64.3474L580.945 82.8472L830.176 98.1297L1015.14 61.0131L1174.52 68.3655L1292.51 39.0691L1430.15 67.1323L1512 101.901L1512 108H0Z" fill="#6C3FBF"/>
+  <defs>
+    <linearGradient id="spaceGrad" x1="0" y1="0" x2="0" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B0D1A"/>
+      <stop offset="0.5" stop-color="#110E24"/>
+      <stop offset="1" stop-color="#1A1040"/>
+    </linearGradient>
+
+    <!-- Milky way wide glow -->
+    <radialGradient id="milkyWide" cx="756" cy="58" rx="700" ry="45" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8B6CC1" stop-opacity="0.6"/>
+      <stop offset="0.4" stop-color="#6C3FBF" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#6C3FBF" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Galaxy disc -->
+    <radialGradient id="galaxyDisc" cx="756" cy="56" rx="350" ry="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#D4C2ED" stop-opacity="0.8"/>
+      <stop offset="0.3" stop-color="#B89CE3" stop-opacity="0.5"/>
+      <stop offset="0.7" stop-color="#8B6CC1" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#6C3FBF" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Galaxy bright core -->
+    <radialGradient id="galaxyCore" cx="756" cy="56" rx="80" ry="14" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="0.25" stop-color="#EDE4F7" stop-opacity="0.7"/>
+      <stop offset="0.6" stop-color="#D4C2ED" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#B89CE3" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Nebula dust left -->
+    <radialGradient id="nebulaL" cx="300" cy="50" rx="200" ry="35" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#D4C2ED" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#D4C2ED" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Nebula dust right -->
+    <radialGradient id="nebulaR" cx="1200" cy="60" rx="200" ry="35" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8B6CC1" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#8B6CC1" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Deep space background -->
+  <rect width="1512" height="108" fill="url(#spaceGrad)"/>
+
+  <!-- Wide milky way band -->
+  <ellipse cx="756" cy="58" rx="700" ry="45" fill="url(#milkyWide)" transform="rotate(-4 756 58)"/>
+
+  <!-- Nebula patches -->
+  <ellipse cx="300" cy="50" rx="200" ry="35" fill="url(#nebulaL)"/>
+  <ellipse cx="1200" cy="60" rx="200" ry="35" fill="url(#nebulaR)"/>
+
+  <!-- Milky way dust lane - wispy shapes along the band -->
+  <path d="M150,58 Q300,42 450,55 Q550,62 650,48 Q756,40 860,50 Q950,58 1050,45 Q1150,38 1250,52 Q1350,60 1450,48" stroke="#B89CE3" stroke-width="8" stroke-opacity="0.25" fill="none" stroke-linecap="round"/>
+  <path d="M100,62 Q250,50 400,60 Q500,68 620,52 Q756,45 880,55 Q980,62 1100,50 Q1200,42 1350,58 Q1420,64 1500,52" stroke="#D4C2ED" stroke-width="4" stroke-opacity="0.35" fill="none" stroke-linecap="round"/>
+  <path d="M200,55 Q350,48 500,58 Q650,65 756,50 Q860,42 1000,55 Q1150,62 1300,50 Q1400,45 1480,55" stroke="#E8D5F5" stroke-width="2" stroke-opacity="0.3" fill="none" stroke-linecap="round"/>
+
+  <!-- Galaxy disc -->
+  <ellipse cx="756" cy="56" rx="350" ry="18" fill="url(#galaxyDisc)" transform="rotate(-6 756 56)"/>
+
+  <!-- Galaxy bright core -->
+  <ellipse cx="756" cy="56" rx="80" ry="12" fill="url(#galaxyCore)"/>
+
+  <!-- Galaxy core pinpoint -->
+  <circle cx="756" cy="56" r="3" fill="#FFFFFF" opacity="0.95"/>
+
+  <!-- Bright stars -->
+  <circle cx="45" cy="12" r="1.3" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="130" cy="85" r="1" fill="#FFFFFF" opacity="0.7"/>
+  <circle cx="210" cy="28" r="1.5" fill="#E8D5F5" opacity="0.85"/>
+  <circle cx="310" cy="95" r="0.9" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="385" cy="8" r="1.2" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="440" cy="52" r="1" fill="#D4C2ED" opacity="0.7"/>
+  <circle cx="520" cy="18" r="1.4" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="590" cy="78" r="0.8" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="680" cy="35" r="1.1" fill="#E8D5F5" opacity="0.75"/>
+  <circle cx="750" cy="5" r="1.3" fill="#FFFFFF" opacity="0.85"/>
+  <circle cx="830" cy="90" r="1" fill="#FFFFFF" opacity="0.65"/>
+  <circle cx="920" cy="22" r="1.5" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="1010" cy="72" r="0.9" fill="#D4C2ED" opacity="0.7"/>
+  <circle cx="1085" cy="15" r="1.2" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="1170" cy="88" r="1" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="1250" cy="30" r="1.4" fill="#E8D5F5" opacity="0.85"/>
+  <circle cx="1340" cy="68" r="0.8" fill="#FFFFFF" opacity="0.55"/>
+  <circle cx="1420" cy="10" r="1.3" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="1490" cy="50" r="1" fill="#FFFFFF" opacity="0.7"/>
+
+  <!-- Medium stars -->
+  <circle cx="70" cy="55" r="0.7" fill="#FFFFFF" opacity="0.5"/>
+  <circle cx="165" cy="42" r="0.8" fill="#FFFFFF" opacity="0.55"/>
+  <circle cx="255" cy="68" r="0.6" fill="#FFFFFF" opacity="0.45"/>
+  <circle cx="350" cy="38" r="0.7" fill="#D4C2ED" opacity="0.5"/>
+  <circle cx="470" cy="88" r="0.8" fill="#FFFFFF" opacity="0.5"/>
+  <circle cx="555" cy="45" r="0.6" fill="#FFFFFF" opacity="0.4"/>
+  <circle cx="635" cy="98" r="0.7" fill="#FFFFFF" opacity="0.5"/>
+  <circle cx="720" cy="55" r="0.8" fill="#E8D5F5" opacity="0.5"/>
+  <circle cx="800" cy="15" r="0.6" fill="#FFFFFF" opacity="0.45"/>
+  <circle cx="875" cy="48" r="0.7" fill="#FFFFFF" opacity="0.5"/>
+  <circle cx="960" cy="82" r="0.8" fill="#FFFFFF" opacity="0.55"/>
+  <circle cx="1045" cy="38" r="0.6" fill="#D4C2ED" opacity="0.45"/>
+  <circle cx="1130" cy="58" r="0.7" fill="#FFFFFF" opacity="0.5"/>
+  <circle cx="1215" cy="95" r="0.8" fill="#FFFFFF" opacity="0.5"/>
+  <circle cx="1305" cy="25" r="0.6" fill="#FFFFFF" opacity="0.4"/>
+  <circle cx="1385" cy="75" r="0.7" fill="#FFFFFF" opacity="0.5"/>
+  <circle cx="1465" cy="30" r="0.8" fill="#E8D5F5" opacity="0.55"/>
+
+  <!-- Dim distant stars -->
+  <circle cx="25" cy="78" r="0.4" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="95" cy="25" r="0.5" fill="#FFFFFF" opacity="0.35"/>
+  <circle cx="185" cy="98" r="0.4" fill="#FFFFFF" opacity="0.25"/>
+  <circle cx="280" cy="10" r="0.5" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="420" cy="32" r="0.4" fill="#FFFFFF" opacity="0.25"/>
+  <circle cx="500" cy="102" r="0.5" fill="#FFFFFF" opacity="0.35"/>
+  <circle cx="610" cy="15" r="0.4" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="700" cy="80" r="0.5" fill="#FFFFFF" opacity="0.25"/>
+  <circle cx="780" cy="42" r="0.4" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="860" cy="65" r="0.5" fill="#FFFFFF" opacity="0.35"/>
+  <circle cx="940" cy="5" r="0.4" fill="#FFFFFF" opacity="0.25"/>
+  <circle cx="1025" cy="95" r="0.5" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="1110" cy="35" r="0.4" fill="#FFFFFF" opacity="0.25"/>
+  <circle cx="1195" cy="12" r="0.5" fill="#FFFFFF" opacity="0.35"/>
+  <circle cx="1275" cy="78" r="0.4" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="1360" cy="42" r="0.5" fill="#FFFFFF" opacity="0.25"/>
+  <circle cx="1450" cy="92" r="0.4" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="1500" cy="18" r="0.5" fill="#FFFFFF" opacity="0.35"/>
 </svg>
