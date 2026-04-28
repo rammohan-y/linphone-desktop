@@ -58,6 +58,13 @@ AbstractWindow {
         rightPanel.replace(aiPanelComponent)
     }
 
+    function hideAiPanel() {
+        if (rightPanel.visible && rightPanel.contentLoader.item
+                && rightPanel.contentLoader.item.objectName === "plugin_aiAgent") {
+            rightPanel.visible = false
+        }
+    }
+
     Component {
         id: aiPanelComponent
         Item {
@@ -85,9 +92,11 @@ AbstractWindow {
         target: CallForgeBridgeCpp
         function onAiStateChanged() {
             if (CallForgeBridgeCpp.aiActive) mainWindow.showAiPanel()
+            else if (!CallForgeBridgeCpp.armed) hideAiPanel()
         }
         function onArmedChanged() {
             if (CallForgeBridgeCpp.armed) mainWindow.showAiPanel()
+            else if (!CallForgeBridgeCpp.aiActive) hideAiPanel()
         }
     }
 
@@ -101,7 +110,7 @@ AbstractWindow {
                     "callState=", mainWindow.callState,
                     "haveCall=", callsModel.haveCall,
                     "visible=", mainWindow.visible)
-        if (CallForgeBridgeCpp.callPanelQml.length > 0) showAiPanel()
+        if ((CallForgeBridgeCpp.armed || CallForgeBridgeCpp.aiActive) && CallForgeBridgeCpp.callPanelQml.length > 0) showAiPanel()
     }
 
     onCallStateChanged: {
