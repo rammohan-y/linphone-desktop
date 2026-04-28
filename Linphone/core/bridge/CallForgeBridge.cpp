@@ -113,9 +113,11 @@ void CallForgeBridge::armAICall(int scenarioIndex) {
 		mArmedScenarioName = scenarios[scenarioIndex].toMap()["name"].toString();
 	else mArmedScenarioName.clear();
 	mAiStatus = QStringLiteral("Armed — waiting for call");
+	mAiTranscript.clear();
 	qInfo() << "[CallForgeBridge] Armed scenario:" << mArmedScenarioIndex << mArmedScenarioName;
 	emit armedChanged();
 	emit aiStateChanged();
+	emit aiTranscriptChanged();
 
 	sendMessage({{"cmd", "armAICall"}, {"scenarioIndex", scenarioIndex}});
 
@@ -142,6 +144,10 @@ void CallForgeBridge::disarmAICall() {
 	emit aiStateChanged();
 
 	sendMessage({{"cmd", "disarmAICall"}});
+	if (mCallListConn) {
+		disconnect(mCallListConn);
+		mCallListConn = {};
+	}
 	releaseCallHandle();
 }
 
@@ -409,10 +415,6 @@ void CallForgeBridge::releaseCallHandle() {
 		disconnect(mPlayFinishedConn);
 		mPlayFinishedConn = {};
 	}
-	if (mCallListConn) {
-		disconnect(mCallListConn);
-		mCallListConn = {};
-	}
 	if (mCallHandle) {
 		mCallHandle->stopFilePlay();
 		mCallHandle->stopMixedRecord();
@@ -429,8 +431,11 @@ void CallForgeBridge::onCallStateForwarded(int state) {
 	sendMessage({{"cmd", "callStateChanged"}, {"state", state}, {"sampleRate", sr}});
 
 	if (state == 14 || state == 13 || state == 19) {
-		qInfo() << "[CallForgeBridge] Call ended (state=" << state << "), releasing call handle";
+		qInfo() << "[CallForgeBridge] Call ended (state=" << state << "), disarming";
 		releaseCallHandle();
+		if (mArmed || mAiActive) {
+			disarmAICall();
+		}
 	}
 }
 
