@@ -185,7 +185,6 @@ void CallForgeBridge::stopAICall() {
 	emit aiStateChanged();
 
 	sendMessage({{"cmd", "stopAICall"}});
-	releaseCallHandle();
 }
 
 // --- Scenario CRUD ---
@@ -394,14 +393,6 @@ void CallForgeBridge::ensureCallHandle() {
 
 	mCallStateConn = connect(mCallHandle, &CallHandle::stateChanged, this, &CallForgeBridge::onCallStateForwarded);
 
-	mCallEndConn = connect(mCallHandle, &CallHandle::stateChanged, this, [this](int s) {
-		if (s == 14 || s == 13 || s == 19) {
-			qInfo() << "[CallForgeBridge] Call ended, forwarding to daemon";
-			sendMessage({{"cmd", "callStateChanged"}, {"state", s}, {"sampleRate", 0}});
-			if (mAiActive) stopAICall();
-		}
-	});
-
 	if (mCallHandle->isActive()) {
 		int sr = mCallHandle->audioSampleRate();
 		qInfo() << "[CallForgeBridge] Call already active, forwarding StreamsRunning sampleRate=" << sr;
@@ -414,10 +405,6 @@ void CallForgeBridge::releaseCallHandle() {
 		disconnect(mCallStateConn);
 		mCallStateConn = {};
 	}
-	if (mCallEndConn) {
-		disconnect(mCallEndConn);
-		mCallEndConn = {};
-	}
 	if (mPlayFinishedConn) {
 		disconnect(mPlayFinishedConn);
 		mPlayFinishedConn = {};
@@ -426,8 +413,13 @@ void CallForgeBridge::releaseCallHandle() {
 		disconnect(mCallListConn);
 		mCallListConn = {};
 	}
-	delete mCallHandle;
-	mCallHandle = nullptr;
+	if (mCallHandle) {
+		mCallHandle->stopFilePlay();
+		mCallHandle->stopMixedRecord();
+		mCallHandle->setMicrophoneMuted(false);
+		mCallHandle->deleteLater();
+		mCallHandle = nullptr;
+	}
 }
 
 void CallForgeBridge::onCallStateForwarded(int state) {
@@ -435,6 +427,11 @@ void CallForgeBridge::onCallStateForwarded(int state) {
 	if (state == 8 && mCallHandle) sr = mCallHandle->audioSampleRate();
 	qInfo() << "[CallForgeBridge] Forwarding callState=" << state << "sampleRate=" << sr;
 	sendMessage({{"cmd", "callStateChanged"}, {"state", state}, {"sampleRate", sr}});
+
+	if (state == 14 || state == 13 || state == 19) {
+		qInfo() << "[CallForgeBridge] Call ended (state=" << state << "), releasing call handle";
+		releaseCallHandle();
+	}
 }
 
 void CallForgeBridge::handleDaemonEvent(const QString &event, const QJsonObject &msg) {

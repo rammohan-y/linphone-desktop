@@ -98,7 +98,6 @@ private:
 
 	CallHandleImpl *mCallHandle = nullptr;
 	QMetaObject::Connection mCallStateConn;
-	QMetaObject::Connection mCallEndConn;
 	QMetaObject::Connection mPlayFinishedConn;
 	QMetaObject::Connection mCallListConn;
 	bool mMicWasMuted = false;
