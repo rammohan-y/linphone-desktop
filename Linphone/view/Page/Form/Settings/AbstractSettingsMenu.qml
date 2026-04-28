@@ -85,13 +85,31 @@ AbstractMainPage {
 				onSelected: {
 					familiesList.selectedIndex = index
 					rightPanelStackView.clear()
-					rightPanelStackView.push(layoutUrl(modelData.layout), { titleText: modelData.title, model: modelData.model, container: rightPanelStackView})
+					if (modelData.qml) {
+						var obj = Qt.createQmlObject(modelData.qml, rightPanelStackView, "daemon-settings-" + index)
+						if (obj) {
+							obj.container = rightPanelStackView
+							obj.titleText = modelData.title
+							rightPanelStackView.push(obj)
+						}
+					} else {
+						rightPanelStackView.push(layoutUrl(modelData.layout), { titleText: modelData.title, model: modelData.model, container: rightPanelStackView})
+					}
 				}
 			}
 		}
 		Component.onCompleted: {
 			let initialEntry = mainItem.families[familiesList.selectedIndex]
-			rightPanelStackView.push(layoutUrl(initialEntry.layout), { titleText: initialEntry.title, model: initialEntry.model, container: rightPanelStackView})
+			if (initialEntry.qml) {
+				var obj = Qt.createQmlObject(initialEntry.qml, rightPanelStackView, "daemon-settings-init")
+				if (obj) {
+					obj.container = rightPanelStackView
+					obj.titleText = initialEntry.title
+					rightPanelStackView.push(obj)
+				}
+			} else {
+				rightPanelStackView.push(layoutUrl(initialEntry.layout), { titleText: initialEntry.title, model: initialEntry.model, container: rightPanelStackView})
+			}
 			familiesList.currentIndex = familiesList.selectedIndex
 		}
 	}

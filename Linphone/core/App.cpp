@@ -47,6 +47,7 @@
 #include "core/address-books/carddav/CarddavProxy.hpp"
 #include "core/address-books/ldap/LdapGui.hpp"
 #include "core/address-books/ldap/LdapProxy.hpp"
+#include "core/bridge/CallForgeBridge.hpp"
 #include "core/call-history/CallHistoryProxy.hpp"
 #include "core/call/CallCore.hpp"
 #include "core/call/CallGui.hpp"
@@ -989,6 +990,9 @@ void App::initCppInterfaces() {
 		                                                loader->registerQmlContextObjects(engine);
 		                                                return loader;
 	                                                });
+
+	auto *callForgeBridge = new CallForgeBridge(this);
+	mEngine->rootContext()->setContextProperty("CallForgeBridgeCpp", callForgeBridge);
 
 	qmlRegisterSingletonType<AccessibilityHelper>(
 	    "AccessibilityHelperCpp", 1, 0, "AccessibilityHelperCpp",

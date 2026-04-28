@@ -48,15 +48,28 @@ AbstractSettingsMenu {
 		)
 	} else {mainItem.goBack()}
 	
-	Component.onCompleted: {
-		SettingsCpp.isSaved = true
-		var pluginTabs = PluginLoaderCpp.pluginSettingsTabs
-		if (pluginTabs && pluginTabs.length > 0) {
-			var merged = families.slice()
-			for (var i = 0; i < pluginTabs.length; i++) {
-				merged.push(pluginTabs[i])
+	property var baseFamilies: families.slice()
+
+	function mergeDaemonTabs() {
+		var daemonTabs = CallForgeBridgeCpp.settingsTabs
+		if (daemonTabs && daemonTabs.length > 0) {
+			var merged = baseFamilies.slice()
+			for (var i = 0; i < daemonTabs.length; i++) {
+				merged.push(daemonTabs[i])
 			}
 			families = merged
 		}
+	}
+
+	Connections {
+		target: CallForgeBridgeCpp
+		function onSettingsTabsChanged() {
+			mainItem.mergeDaemonTabs()
+		}
+	}
+
+	Component.onCompleted: {
+		SettingsCpp.isSaved = true
+		mergeDaemonTabs()
 	}
 }

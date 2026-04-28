@@ -8,8 +8,8 @@ import 'qrc:/qt/qml/Linphone/view/Style/buttonStyle.js' as ButtonStyle
 
 Rectangle {
 	id: mainItem
-	width: container.width
-	height: container.height
+	width: container ? container.width : 0
+	height: container ? container.height : 0
 	property string titleText
 	property var contentModel
 	property var topbarOptionalComponent
@@ -57,7 +57,7 @@ Rectangle {
                     Layout.preferredWidth: Utils.getSizeWithScreenRatio(30)
 					icon.source: AppIcons.leftArrow
 					focus: true
-					visible: mainItem.container.depth > 1
+					visible: mainItem.container ? mainItem.container.depth > 1 : false
                     Layout.rightMargin: Utils.getSizeWithScreenRatio(41)
 					style: ButtonStyle.noBackground
 					onClicked: {

@@ -1,22 +1,25 @@
-# AI Agent — Call Automation & Transcription
+# AI Vendor — Call Automation & Transcription
 
 ## Goal
-Integrate AI caller agents (starting with Google Gemini) that can make phone calls on behalf of the user. The user defines **AI Agents** (vendor configurations) and **AI Scenarios** (call scripts). When making an AI Call, the user picks a scenario, and the system uses the linked agent config + prompt to conduct the call and produce a transcript.
+Integrate AI caller vendors (starting with Google Gemini) that can make phone calls on behalf of the user. The user defines **AI Vendors** (provider configurations) and **AI Scenarios** (call scripts). When making an AI Call, the user picks a scenario, and the system uses the linked vendor config + prompt to conduct the call and produce a transcript.
 
 ## Status
 - [x] Research — audio capture, playback, available libraries
 - [x] Research — streaming vs file I/O, SDK audio APIs
-- [x] Phase 1a — Single-agent settings (API key, model, etc.) — **to be replaced by Phase 1b**
-- [x] Phase 1b — Multi-agent + multi-scenario settings
-- [x] Phase 2 — Core AI agent backend (audio capture → Gemini → audio inject)
+- [x] Phase 1a — Single-vendor settings (API key, model, etc.) — **replaced by Phase 1b**
+- [x] Phase 1b — Multi-vendor + multi-scenario settings
+- [x] Phase 2 — Core AI backend (audio capture → Gemini → audio inject)
 - [x] Phase 3 — AI Call button & call window UI (arm-then-dial flow, live transcript panel)
+- [x] Audio fixes — 48kHz→16kHz downsampling, sample rate detection, Gemini language support
+- [x] Branding — CallForge rebrand, purple theme, lavender tint, space background
+- [x] UI polish — Rename "AI Agent" → "AI Vendor", show scenario name in call, feature-gated visibility
 - [ ] Phase 4 — Transcript export & history
 
 ---
 
 ## Data Model
 
-### AI Agent (vendor configuration)
+### AI Vendor (provider configuration)
 Stored in linphonerc as indexed INI sections: `[ai_agent_0]`, `[ai_agent_1]`, etc.
 
 | Field | Config Key | Default | Description |
@@ -26,26 +29,7 @@ Stored in linphonerc as indexed INI sections: `[ai_agent_0]`, `[ai_agent_1]`, et
 | API Key | `api_key` | (empty) | Vendor API key |
 | Model | `model` | `gemini-2.0-flash-live-001` | Model identifier |
 | Voice | `voice` | `Puck` | TTS voice name |
-| Language | `language` | `en-US` | Language code |
-
-Example in linphonerc:
-```ini
-[ai_agent_0]
-name=Gemini Flash
-provider=gemini
-api_key=AIzaSy...
-model=gemini-2.0-flash-live-001
-voice=Puck
-language=en-US
-
-[ai_agent_1]
-name=Gemini Pro
-provider=gemini
-api_key=AIzaSy...
-model=gemini-2.5-pro-preview-03-25
-voice=Aoede
-language=en-US
-```
+| Language | `language` | `en-US` | Language code sent as `speechConfig.languageCode` to Gemini |
 
 ### AI Scenario (call script)
 Stored in linphonerc as indexed INI sections: `[ai_scenario_0]`, `[ai_scenario_1]`, etc.
@@ -53,29 +37,16 @@ Stored in linphonerc as indexed INI sections: `[ai_scenario_0]`, `[ai_scenario_1
 | Field | Config Key | Default | Description |
 |-------|-----------|---------|-------------|
 | Name | `name` | (required) | User-visible label, e.g., "Book Dentist" |
-| Agent Index | `agent_index` | `0` | Index of the AI Agent to use |
+| Agent Index | `agent_index` | `0` | Index of the AI Vendor to use |
 | System Prompt | `system_prompt` | (empty) | The instruction given to the AI |
-
-Example in linphonerc:
-```ini
-[ai_scenario_0]
-name=Book Dentist
-agent_index=0
-system_prompt=You are calling Dr. Sharma's clinic to book a general checkup...
-
-[ai_scenario_1]
-name=ISP Complaint
-agent_index=0
-system_prompt=You are calling a broadband provider's support line...
-```
 
 ### Runtime Flow
 ```
 User picks scenario "Book Dentist"
     → scenario.agent_index = 0
     → loads ai_agent_0 (Gemini Flash config)
-    → loads scenario system_prompt
-    → initiates AI Call with agent config + prompt
+    → loads scenario system_prompt + vendor language
+    → initiates AI Call with vendor config + prompt
 ```
 
 ---
@@ -86,25 +57,27 @@ User picks scenario "Book Dentist"
 Callee speaks
     │
     ▼
-linphone call audio (PCM s16le 16kHz, decoded by mediastreamer2)
+linphone call audio (PCM s16le, 16kHz or 48kHz depending on codec)
     │
     ├──► Speaker (user hears callee — normal audio path)
     │
     ▼
-call->startRecording() → growing WAV file (/tmp/ai_capture_XXXX.wav)
+mixed_record_start() → growing WAV file (/tmp/ai_capture_XXXX.wav)
     │
     ▼
-GeminiAgentModel (worker thread)
-    │  reads new PCM chunks from WAV file via QTimer (every 200ms)
-    │  strips WAV header, sends raw PCM as base64 over WebSocket
+CaptureFilePoller (dedicated thread, 50ms PreciseTimer)
+    │  reads new PCM chunks from WAV file
+    │  conditionally downsamples 48kHz→16kHz (detected from audio stream)
+    │  sends raw PCM as base64 over WebSocket
     ▼
 Gemini Multimodal Live API (bidirectional WebSocket)
+    │  Setup includes languageCode from vendor config
     │  Gemini's VAD detects end-of-speech
     │  returns: audio response chunks + transcript text
     ▼
-GeminiAgentModel
+AICallController
     │
-    ├──► Audio response: write PCM to temp WAV file
+    ├──► Audio response: resample 24kHz→16kHz, write PCM to temp WAV file
     │        │
     │        ▼
     │    call->getPlayer()->open(tempWav) + start()
@@ -113,96 +86,32 @@ GeminiAgentModel
     └──► Transcript text
              │
              ▼
-         GeminiAgentCore (UI thread) → QML live transcript panel
+         AICallController → QML live transcript panel
+         Panel title shows "AI Scenario - <name>"
+         Status shows "<scenario name> — listening..."
 ```
 
 ## Key Findings from Research
 
-### Audio Capture — Call Recording (chosen approach)
-- `CallParams::setRecordFile(path)` — set before call or update during call
-- `Call::startRecording()` / `Call::stopRecording()` — records callee's decoded audio
-- Output: **16-bit linear WAV** (PCM s16le), mono
-- We read the growing file from a separate thread, tracking read position
+### Audio Capture — Mixed Recording (chosen approach)
+- `audio_stream_mixed_record_start()` — records both local and remote audio
+- Output: **16-bit linear WAV** (PCM s16le), mono, rate depends on codec (16kHz or 48kHz)
+- CaptureFilePoller reads growing file from dedicated thread
 
-### Audio Capture — Why NOT "External Audio Device"
-- `LinphoneAudioDeviceType` enum in SDK 5.5.0 has NO External type (stops at Hdmi=12)
-- `Core::setUseFiles(true)` + `Core::setRecordFile()` is global — breaks user's mic/speaker
-- Per-call recording via `CallParams::setRecordFile()` is the correct scoped approach
+### Audio Sample Rate Handling
+- **Problem**: Codec negotiation determines stream sample rate (16kHz with video disabled, 48kHz otherwise)
+- **Solution**: Detect actual `stream->sample_rate` via `BlockingQueuedConnection`, conditionally downsample 48kHz→16kHz before sending to Gemini
+- **Gemini expects**: `audio/pcm;rate=16000` — sending 48kHz as 16kHz caused 3x speed distortion and sporadic VAD failures
+- **Playback resampling**: SDK's `linphone_player_open/start` handles resampling automatically via MSResample filter
 
 ### Audio Injection — call->getPlayer()
 - `Call::getPlayer()` returns the in-call `Player` object
 - `Player::open(filePath)` + `Player::start()` — file-based only (seeks internally, no FIFOs)
 - Write Gemini's response to a temp WAV, then play it
 
-### Storing Lists in Config — Shortcuts Pattern
-- Use indexed INI sections: `[prefix_0]`, `[prefix_1]`, etc.
-- Read via `mConfig->getSectionsNamesList()` + prefix filtering
-- Write via `mConfig->cleanSection()` + rewrite all
-- Proven pattern used by shortcuts feature in SettingsModel.cpp
-
-### WebSocket
-- Qt6::WebSockets module provides `QWebSocket` — add to CMakeLists.txt
-
 ---
 
-## Implementation Plan
-
-### Phase 1b — Multi-Agent & Multi-Scenario Settings
-
-**Step 1: Replace flat settings with list-based storage in SettingsModel**
-
-Modify `Linphone/model/setting/SettingsModel.hpp/cpp`:
-- Remove the 5 flat `gemini_*` GETSET macros
-- Add methods:
-  - `QVariantList getAiAgents() const` — reads all `[ai_agent_N]` sections
-  - `void setAiAgents(const QVariantList &agents)` — cleans and rewrites all sections
-  - `QVariantList getAiScenarios() const` — reads all `[ai_scenario_N]` sections
-  - `void setAiScenarios(const QVariantList &scenarios)` — cleans and rewrites all sections
-- Follow the exact shortcuts pattern (`getSectionsNamesList()`, prefix filter, indexed write)
-
-**Step 2: Update SettingsCore to sync lists**
-
-Modify `Linphone/core/setting/SettingsCore.hpp/cpp`:
-- Remove the 5 flat gemini Q_PROPERTYs, getters, setters, signals, members
-- Add:
-  - `Q_PROPERTY(QVariantList aiAgents READ getAiAgents WRITE setAiAgents NOTIFY aiAgentsChanged)`
-  - `Q_PROPERTY(QVariantList aiScenarios READ getAiScenarios WRITE setAiScenarios NOTIFY aiScenariosChanged)`
-  - Corresponding members, signals, copy constructor entries, writeIntoModel/writeFromModel
-- Invokable helpers for QML:
-  - `Q_INVOKABLE void addAiAgent(QVariantMap agent)`
-  - `Q_INVOKABLE void removeAiAgent(int index)`
-  - `Q_INVOKABLE void updateAiAgent(int index, QVariantMap agent)`
-  - `Q_INVOKABLE void addAiScenario(QVariantMap scenario)`
-  - `Q_INVOKABLE void removeAiScenario(int index)`
-  - `Q_INVOKABLE void updateAiScenario(int index, QVariantMap scenario)`
-  - `Q_INVOKABLE QVariantList getAgentNames()` — for scenario dropdown
-
-**Step 3: AI Agents Settings UI**
-
-Replace `AIAgentSettingsLayout.qml` content with:
-- List of configured agents (ListView with name, provider, model summary)
-- "Add Agent" button → opens inline form or dialog
-- Each agent row: edit/delete buttons
-- Edit form: name, API key (hidden), model, voice, language fields
-- Uses SettingsCpp.aiAgents / SettingsCpp.addAiAgent() etc.
-
-**Step 4: AI Scenarios Settings UI**
-
-Create `AIScenarioSettingsLayout.qml`:
-- List of configured scenarios (ListView with name, agent name summary)
-- "Add Scenario" button → opens inline form
-- Each scenario row: edit/delete buttons
-- Edit form: name, agent dropdown (populated from SettingsCpp.getAgentNames()), system prompt TextArea
-- Register in view/CMakeLists.txt and SettingsPage.qml
-
-### Phase 2 — Core AI Agent Backend
-(unchanged — uses scenario's agent config + prompt at runtime)
-
-New files:
-- `Linphone/model/ai/AIAgentModel.hpp` — abstract base class
-- `Linphone/model/ai/GeminiAgentModel.hpp/cpp` — Gemini WebSocket implementation
-- `Linphone/core/ai/GeminiAgentCore.hpp/cpp` — UI thread core
-- `Linphone/core/ai/GeminiAgentGui.hpp/cpp` — QML wrapper
+## Implementation Details
 
 ### Phase 3 — AI Call Button & Call Window UI ✅
 
@@ -216,27 +125,52 @@ New files:
 5. AI transcript panel opens as a lightweight right panel in CallsWindow (deferred via `Qt.callLater`)
 
 **Key implementation details:**
-- **CaptureFilePoller**: Dedicated thread with 50ms PreciseTimer for file polling (off main thread)
-- **Bidi-ready buffering**: `GeminiLiveClient` accumulates PCM in `mPendingInputPcm` before `setupComplete`, then flushes — prevents losing early callee audio
-- **BlockingQueuedConnection for mixed_record_start**: Ensures capture is running before QML `activeChanged` triggers panel load
-- **Deferred activeChanged**: `QMetaObject::invokeMethod(..., Qt::QueuedConnection)` so `rightPanel.replace()` never runs in the same stack frame as capture setup
-- **Async Gemini teardown**: `cleanupGemini()` uses a joiner thread; `cleanupGeminiBlocking()` for destructor/disarm
-- **CallCore cache in CallList**: `QHash<quintptr, QSharedPointer<CallCore>>` deduplicates wrappers by native `LinphoneCall*` — avoids recreating expensive CallCore/CallModel on each `lUpdate()` cycle
-- **Proper mixed recording stop**: `audio_stream_mixed_record_stop()` (not `callModel->stopRecording()` which is a different mechanism)
-- **Player close in cleanup**: `player->close()` on SDK thread before next call negotiates media
-- **Env kill switches**: `LINPHONE_AI_NOOP`, `LINPHONE_AI_DISABLE_CAPTURE`, `LINPHONE_AI_DISABLE_POLLING`, `LINPHONE_AI_DISABLE_GEMINI`, `LINPHONE_AI_DISABLE_LOCAL_PLAYBACK`, `LINPHONE_AI_DISABLE_REMOTE_PLAYBACK`, `LINPHONE_AI_DISABLE_MIC_MUTE` for isolating regressions
+- **CaptureFilePoller**: Dedicated thread with 50ms PreciseTimer for file polling
+- **Bidi-ready buffering**: `GeminiLiveClient` accumulates PCM before `setupComplete`, flushes after
+- **Conditional downsampling**: Detect audio stream sample rate, downsample 48kHz→16kHz only when needed
+- **Language support**: `speechConfig.languageCode` sent in Gemini setup message from vendor config
+- **activeScenarioName**: Persists through active call (unlike `armedScenarioIndex` which resets on disarm)
+- **Async Gemini teardown**: Joiner thread for non-blocking cleanup
+- **CallCore cache in CallList**: Deduplicates wrappers by native `LinphoneCall*`
+- **Env kill switches**: `LINPHONE_AI_NOOP`, `DISABLE_CAPTURE`, `DISABLE_POLLING`, `DISABLE_GEMINI`, etc.
 
-**Files modified:**
-- `Linphone/core/ai/AICallController.hpp/cpp` — Full rewrite with arm/disarm flow, async teardown, blocking capture start
-- `Linphone/core/ai/CaptureFilePoller.hpp/cpp` — New: dedicated polling thread with pause/resume
-- `Linphone/model/ai/GeminiLiveClient.hpp/cpp` — Bidi-ready buffering, debug instrumentation
-- `Linphone/core/call/CallList.hpp/cpp` — CallCore cache by native pointer
-- `Linphone/core/call/CallCore.hpp/cpp` — `getNativePtr()`, perf tracing
-- `Linphone/view/Page/Main/Call/CallPage.qml` — AI Call popup button, armed banner
-- `Linphone/view/Page/Window/Call/CallsWindow.qml` — AI Agent right panel, More Options entry, debug timing
-- `Linphone/core/App.cpp` — AICallController singleton registration, UI init timing
+### Audio Fixes ✅
+- **48kHz→16kHz downsampling**: Averages every 3 consecutive int16 samples
+- **Sample rate detection**: `stream->sample_rate` captured via pointer in SDK thread lambda
+- **Conditional logic**: `mCaptureSampleRate > 16000 ? downsample48kTo16k(pcmData) : pcmData`
+- **Validated**: 5/5 (100%) Gemini response rate vs 3/14 (21%) before fix
 
-### Phase 4 — Transcript Export & History
+### Branding & UI Polish ✅
+- **CallForge rebrand**: Logo, splash, login image, translations all updated
+- **Purple theme**: `#6C3FBF` primary, secondary palette shifted to purple tints
+- **Lavender background**: Grey scale tinted lavender (#EEEAF6 base) for reduced eye strain
+- **Space background**: Dark space with milky way band replaces mountain waves on login
+- **Login flow**: Skip wizard, go directly to third-party SIP login
+- **Feature gating**: Video codecs, Hide FPS, Video Call button respect `videoEnabled` setting
+- **Tray menu**: Removed "Mark All Read" and "Check for Update" (Linphone-specific)
+- **Naming**: "AI Agent" → "AI Vendor" everywhere, scenario name shown in call panel
+
+### Files Modified
+- `Linphone/core/ai/AICallController.hpp/cpp` — Full controller with arm/disarm, downsampling, activeScenarioName
+- `Linphone/core/ai/CaptureFilePoller.hpp/cpp` — Dedicated polling thread
+- `Linphone/model/ai/GeminiLiveClient.hpp/cpp` — Bidi buffering, languageCode support
+- `Linphone/core/call/CallList.hpp/cpp` — CallCore cache
+- `Linphone/core/call/CallCore.hpp/cpp` — getNativePtr()
+- `Linphone/core/setting/SettingsCore.hpp/cpp` — AI vendor/scenario properties
+- `Linphone/model/setting/SettingsModel.hpp/cpp` — Indexed INI storage
+- `Linphone/core/App.cpp` — Singleton registration, tray menu cleanup
+- `Linphone/view/Page/Main/Call/CallPage.qml` — AI Call popup, armed banner
+- `Linphone/view/Page/Window/Call/CallsWindow.qml` — AI Scenario panel, scenario name title
+- `Linphone/view/Page/Layout/Settings/AIAgentSettingsLayout.qml` — Vendor settings UI
+- `Linphone/view/Page/Layout/Settings/AIScenarioSettingsLayout.qml` — Scenario settings UI
+- `Linphone/view/Page/Layout/Settings/AdvancedSettingsLayout.qml` — Feature-gated video sections
+- `Linphone/view/Style/DefaultStyle.qml` — Lavender tint, purple secondary palette
+- `Linphone/view/Style/Themes.qml` — Purple theme colors
+- `Linphone/data/image/*.svg` — New CallForge branding assets
+- `Linphone/data/languages/*.ts` — "Linphone" → "CallForge" in translations
+- `Linphone/data/config/linphonerc-factory` — Video disabled by default
+
+### Phase 4 — Transcript Export & History (TODO)
 - Export as .txt / .json from panel
 - Optionally store alongside recordings
 
@@ -252,9 +186,10 @@ New files:
     "setup": {
       "model": "models/gemini-2.0-flash-live-001",
       "generationConfig": {
-        "responseModalities": ["AUDIO", "TEXT"],
+        "responseModalities": ["AUDIO"],
         "speechConfig": {
-          "voiceConfig": { "prebuiltVoiceConfig": { "voiceName": "Puck" } }
+          "voiceConfig": { "prebuiltVoiceConfig": { "voiceName": "Puck" } },
+          "languageCode": "en-US"
         }
       },
       "systemInstruction": {
@@ -272,28 +207,41 @@ New files:
 ---
 
 ## Design Decisions (resolved)
-- **Multi-agent**: Users can configure multiple vendor profiles (agent configs)
-- **Multi-scenario**: Users define reusable call scripts, each linked to an agent
+- **Multi-vendor**: Users can configure multiple provider profiles (vendor configs)
+- **Multi-scenario**: Users define reusable call scripts, each linked to a vendor
 - **Arm-then-dial**: User arms a scenario pre-call, then dials normally — AI call uses the same navigation/UI path as a regular call to avoid progressive QML degradation
 - **Mic muted during AI playback**: Prevents barge-in detection on remote party hearing AI audio through speakers
-- **Capture position advance after playback**: Skips AI's own played-back audio in the capture file to prevent Gemini hearing itself
-- **Timestamps**: Transcript includes timestamps relative to call start
-- **Prominent AI indicator**: Armed banner on CallPage, status in right panel during call
-- **Multi-provider future**: Agent configs include `provider` field for OpenAI etc.
+- **Capture position advance after playback**: Skips AI's own played-back audio in the capture file
+- **Conditional downsampling**: Detect stream sample rate before downsampling to avoid corrupting already-16kHz audio
+- **Language passthrough**: Vendor language config sent as Gemini `speechConfig.languageCode`
+- **Lavender theme**: Softer than pure white for desktop eye comfort, preserves text readability
+- **Feature gating**: Video-related settings/UI hidden when video disabled
 - **Storage**: Indexed INI sections in linphonerc (shortcuts pattern)
-- **Local + remote audio**: `aplay` streams to speakers for local monitoring; `call->getPlayer()` sends to remote via RTP
 
 ## Future Enhancements
 
 ### Prompt Assistant — AI-powered system prompt generation
 "Generate with AI" button next to system prompt TextArea. User types brief description, Gemini text API generates a full system prompt.
 
+### Multi-provider support
+Agent configs include `provider` field — extend beyond Gemini to OpenAI, etc.
+
 ---
 
 ## Log
 - 2026-04-23: Initial plan created after codebase research
-- 2026-04-23: Phase 1a implemented — flat single-agent settings in SettingsModel/SettingsCore/QML
-- 2026-04-23: Fixed AI Agent settings — moved to separate tab (AIAgentSettingsLayout.qml)
-- 2026-04-24: Design change — multi-agent + multi-scenario architecture. Replacing flat settings with list-based storage using indexed INI sections (shortcuts pattern). Plan updated for Phase 1b.
-- 2026-04-24: Phase 2 complete — AICallController + GeminiLiveClient with mixed recording, resampling, aplay streaming, remote playback via call player
-- 2026-04-25: Phase 3 complete — arm-then-dial flow, CaptureFilePoller on dedicated thread, CallCore cache to prevent wrapper duplication, async Gemini teardown, proper mixed_record_stop, env kill switches for regression isolation. Key fix: keeping AI call on normal navigation path eliminated progressive UI lag and RSS growth.
+- 2026-04-23: Phase 1a implemented — flat single-agent settings
+- 2026-04-23: Fixed AI Agent settings — moved to separate tab
+- 2026-04-24: Design change — multi-agent + multi-scenario architecture (Phase 1b)
+- 2026-04-24: Phase 2 complete — AICallController + GeminiLiveClient
+- 2026-04-25: Phase 3 complete — arm-then-dial flow, CaptureFilePoller, CallCore cache, async teardown
+- 2026-04-26: CallForge rebrand — purple theme, new SVGs, translations, streamlined login
+- 2026-04-26: Fixed Gemini sporadic failures — 48kHz→16kHz downsampling
+- 2026-04-26: Sample rate detection — conditional downsampling based on actual stream rate
+- 2026-04-26: Renamed "AI Agent" → "AI Vendor" across entire app
+- 2026-04-26: Added activeScenarioName property for in-call panel title
+- 2026-04-26: Wired languageCode into Gemini speechConfig setup
+- 2026-04-26: Feature-gated Video codecs and Hide FPS in Advanced Settings
+- 2026-04-26: Removed irrelevant tray menu items (Mark All Read, Check for Update)
+- 2026-04-26: Lavender tinted grey scale for reduced eye strain
+- 2026-04-26: Space/milky way background replaces mountain waves on login screen
