@@ -54,4 +54,5 @@ export Qt6_DIR="$HOME/Qt/6.10.0/gcc_64/lib/cmake/Qt6"
 export PATH="$HOME/Qt/6.10.0/gcc_64/bin:$PATH"
 export LD_LIBRARY_PATH="$SDK_LIB:$QT_LIB:$LD_LIBRARY_PATH"
 export QT_PLUGIN_PATH="$HOME/Qt/6.10.0/gcc_64/plugins"
-exec "$BINARY" "$@"
+rm -f /tmp/callforge.log
+exec "$BINARY" --verbose "$@" 2>&1 | tee /tmp/callforge.log

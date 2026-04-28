@@ -149,9 +149,6 @@ SettingsCore::SettingsCore(QObject *parent) : QObject(parent) {
 	INIT_CORE_MEMBER(ConfigLocale, settingsModel)
 	INIT_CORE_MEMBER(DownloadFolder, settingsModel)
 	INIT_CORE_MEMBER(AudioPlayerFolder, settingsModel)
-	mAiAgents = settingsModel->getAiAgents();
-	mAiScenarios = settingsModel->getAiScenarios();
-
 	INIT_CORE_MEMBER(ShortcutCount, settingsModel)
 	INIT_CORE_MEMBER(Shortcuts, settingsModel)
 	INIT_CORE_MEMBER(CallToneIndicationsEnabled, settingsModel)
@@ -236,8 +233,6 @@ SettingsCore::SettingsCore(const SettingsCore &settingsCore) {
 	mConfigLocale = settingsCore.mConfigLocale;
 	mDownloadFolder = settingsCore.mDownloadFolder;
 	mAudioPlayerFolder = settingsCore.mAudioPlayerFolder;
-	mAiAgents = settingsCore.mAiAgents;
-	mAiScenarios = settingsCore.mAiScenarios;
 	mShortcutCount = settingsCore.mShortcutCount;
 	mShortcuts = settingsCore.mShortcuts;
 	mCallToneIndicationsEnabled = settingsCore.mCallToneIndicationsEnabled;
@@ -355,9 +350,6 @@ void SettingsCore::reloadSettings() {
 	setConfigLocale(settingsModel->getConfigLocale());
 	setDownloadFolder(settingsModel->getDownloadFolder());
 	setAudioPlayerFolder(settingsModel->getAudioPlayerFolder());
-	setAiAgents(settingsModel->getAiAgents());
-	setAiScenarios(settingsModel->getAiScenarios());
-
 	setCallToneIndicationsEnabled(settingsModel->getCallToneIndicationsEnabled());
 	setCommandLine(settingsModel->getCommandLine());
 	setDisableCommandLine(settingsModel->getDisableCommandLine());
@@ -440,14 +432,6 @@ void SettingsCore::setSelf(QSharedPointer<SettingsCore> me) {
 	    &SettingsModel::audioPlayerFolderChanged, [this](const QString &folder) {
 		    mSettingsModelConnection->invokeToCore([this, folder]() { setAudioPlayerFolder(folder); });
 	    });
-
-	// AI Agent settings
-	mSettingsModelConnection->makeConnectToModel(&SettingsModel::aiAgentsChanged, [this](QVariantList agents) {
-		mSettingsModelConnection->invokeToCore([this, agents]() { setAiAgents(agents); });
-	});
-	mSettingsModelConnection->makeConnectToModel(&SettingsModel::aiScenariosChanged, [this](QVariantList scenarios) {
-		mSettingsModelConnection->invokeToCore([this, scenarios]() { setAiScenarios(scenarios); });
-	});
 
 	// Auto recording
 	mSettingsModelConnection->makeConnectToModel(
@@ -757,8 +741,6 @@ void SettingsCore::reset(const SettingsCore &settingsCore) {
 	setConfigLocale(settingsCore.mConfigLocale);
 	setDownloadFolder(settingsCore.mDownloadFolder);
 	setAudioPlayerFolder(settingsCore.mAudioPlayerFolder);
-	setAiAgents(settingsCore.mAiAgents);
-	setAiScenarios(settingsCore.mAiScenarios);
 	setCallForwardToAddress(settingsCore.mCallForwardToAddress);
 }
 
@@ -1329,149 +1311,6 @@ void SettingsCore::setAudioPlayerFolder(QString folder) {
 	}
 }
 
-QVariantList SettingsCore::getAiAgents() const {
-	return mAiAgents;
-}
-
-void SettingsCore::setAiAgents(QVariantList agents) {
-	if (mAiAgents != agents) {
-		mAiAgents = agents;
-		emit aiAgentsChanged();
-		setIsSaved(false);
-	}
-}
-
-void SettingsCore::addAiAgent(QVariantMap agent) {
-	mAiAgents.append(agent);
-	emit aiAgentsChanged();
-	setIsSaved(false);
-}
-
-void SettingsCore::removeAiAgent(int index) {
-	if (index >= 0 && index < mAiAgents.size()) {
-		mAiAgents.removeAt(index);
-		for (int i = 0; i < mAiScenarios.size(); ++i) {
-			auto s = mAiScenarios[i].toMap();
-			int agentIdx = s["agentIndex"].toInt();
-			if (agentIdx == index) {
-				s["agentIndex"] = 0;
-				mAiScenarios[i] = s;
-			} else if (agentIdx > index) {
-				s["agentIndex"] = agentIdx - 1;
-				mAiScenarios[i] = s;
-			}
-		}
-		emit aiAgentsChanged();
-		emit aiScenariosChanged();
-		setIsSaved(false);
-	}
-}
-
-void SettingsCore::updateAiAgent(int index, QVariantMap agent) {
-	if (index >= 0 && index < mAiAgents.size()) {
-		mAiAgents[index] = agent;
-		emit aiAgentsChanged();
-		setIsSaved(false);
-	}
-}
-
-QVariantList SettingsCore::getAiScenarios() const {
-	return mAiScenarios;
-}
-
-void SettingsCore::setAiScenarios(QVariantList scenarios) {
-	if (mAiScenarios != scenarios) {
-		mAiScenarios = scenarios;
-		emit aiScenariosChanged();
-		setIsSaved(false);
-	}
-}
-
-void SettingsCore::addAiScenario(QVariantMap scenario) {
-	mAiScenarios.append(scenario);
-	emit aiScenariosChanged();
-	setIsSaved(false);
-}
-
-void SettingsCore::removeAiScenario(int index) {
-	if (index >= 0 && index < mAiScenarios.size()) {
-		mAiScenarios.removeAt(index);
-		emit aiScenariosChanged();
-		setIsSaved(false);
-	}
-}
-
-void SettingsCore::updateAiScenario(int index, QVariantMap scenario) {
-	if (index >= 0 && index < mAiScenarios.size()) {
-		mAiScenarios[index] = scenario;
-		emit aiScenariosChanged();
-		setIsSaved(false);
-	}
-}
-
-QVariantList SettingsCore::getAgentNames() const {
-	QVariantList names;
-	for (const auto &agent : mAiAgents) {
-		names.append(agent.toMap()["name"]);
-	}
-	return names;
-}
-
-void SettingsCore::testAiAgent(int index) {
-	if (index < 0 || index >= mAiAgents.size()) {
-		emit aiAgentTestResult(false, "Invalid agent index");
-		return;
-	}
-	auto agent = mAiAgents[index].toMap();
-	QString apiKey = agent["apiKey"].toString();
-	QString model = agent["model"].toString();
-
-	if (apiKey.isEmpty()) {
-		emit aiAgentTestResult(false, "API key is empty");
-		return;
-	}
-	if (model.isEmpty()) {
-		emit aiAgentTestResult(false, "Model is empty");
-		return;
-	}
-
-	QString url = QString("https://generativelanguage.googleapis.com/v1beta/models/%1?key=%2").arg(model, apiKey);
-
-	QNetworkRequest request(url);
-
-	auto *nam = new QNetworkAccessManager(this);
-	QNetworkReply *reply = nam->get(request);
-
-	connect(reply, &QNetworkReply::finished, this, [this, reply, nam]() {
-		bool success = false;
-		QString message;
-		auto responseData = reply->readAll();
-		QJsonDocument doc = QJsonDocument::fromJson(responseData);
-		int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-		if (reply->error() == QNetworkReply::NoError) {
-			if (doc.object().contains("name")) {
-				success = true;
-				message = "Connection successful — model: " + doc.object()["displayName"].toString();
-			} else if (doc.object().contains("error")) {
-				message = doc.object()["error"].toObject()["message"].toString();
-			} else {
-				message = "Unexpected response";
-			}
-		} else {
-			if (doc.object().contains("error")) {
-				message = doc.object()["error"].toObject()["message"].toString();
-			} else {
-				message = reply->errorString();
-			}
-		}
-		qInfo() << "[AI Agent Test] HTTP" << httpStatus << (success ? "OK" : "FAIL") << ":" << message;
-		if (!success) qWarning() << "[AI Agent Test] Response body:" << QString::fromUtf8(responseData);
-		emit aiAgentTestResult(success, message);
-		reply->deleteLater();
-		nam->deleteLater();
-	});
-}
-
 void SettingsCore::writeIntoModel(std::shared_ptr<SettingsModel> model) const {
 	mustBeInLinphoneThread(getClassName() + Q_FUNC_INFO);
 	// Security
@@ -1541,8 +1380,6 @@ void SettingsCore::writeIntoModel(std::shared_ptr<SettingsModel> model) const {
 	model->setConfigLocale(mConfigLocale);
 	model->setDownloadFolder(mDownloadFolder);
 	model->setAudioPlayerFolder(mAudioPlayerFolder);
-	model->setAiAgents(mAiAgents);
-	model->setAiScenarios(mAiScenarios);
 	model->setCallForwardToAddress(mCallForwardToAddress);
 }
 
@@ -1632,8 +1469,6 @@ void SettingsCore::writeFromModel(const std::shared_ptr<SettingsModel> &model) {
 	mConfigLocale = model->getConfigLocale();
 	mDownloadFolder = model->getDownloadFolder();
 	mAudioPlayerFolder = model->getAudioPlayerFolder();
-	mAiAgents = model->getAiAgents();
-	mAiScenarios = model->getAiScenarios();
 	mCallForwardToAddress = model->getCallForwardToAddress();
 }
 

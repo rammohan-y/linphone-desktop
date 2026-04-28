@@ -47,7 +47,6 @@
 #include "core/address-books/carddav/CarddavProxy.hpp"
 #include "core/address-books/ldap/LdapGui.hpp"
 #include "core/address-books/ldap/LdapProxy.hpp"
-#include "core/ai/AICallController.hpp"
 #include "core/call-history/CallHistoryProxy.hpp"
 #include "core/call/CallCore.hpp"
 #include "core/call/CallGui.hpp"
@@ -82,6 +81,8 @@
 #include "core/payload-type/PayloadTypeProxy.hpp"
 #include "core/phone-number/PhoneNumber.hpp"
 #include "core/phone-number/PhoneNumberProxy.hpp"
+#include "core/plugin/CallForgeHostContextImpl.hpp"
+#include "core/plugin/CallForgePluginLoader.hpp"
 #include "core/recorder/RecorderGui.hpp"
 #include "core/register/RegisterPage.hpp"
 #include "core/screen/ScreenList.hpp"
@@ -831,6 +832,8 @@ void App::initCore() {
 						        exit(-1);
 					        }
 					        auto window = qobject_cast<QQuickWindow *>(obj);
+					        qInfo() << "[App] objectCreated: obj=" << obj
+					                << "className=" << obj->metaObject()->className() << "window=" << window;
 					        setMainWindow(window);
 #if defined(__APPLE__)
 					        setMacOSDockActions();
@@ -886,8 +889,10 @@ void App::initCore() {
 					        }
 					        if (mSettings->autoCheckForUpdateOnStart()) checkForUpdate();
 					        setIsRestarting(false);
-					        window->show();
-					        window->requestActivate();
+					        if (window) {
+						        window->show();
+						        window->requestActivate();
+					        }
 
 					        //---------------------------------------------------------------------------------------------
 					        lDebug() << log().arg("Creating KeyboardShortcuts");
@@ -976,9 +981,14 @@ void App::initCppInterfaces() {
 	    "SettingsCpp", 1, 0, "SettingsCpp",
 	    [this](QQmlEngine *engine, QJSEngine *) -> QObject * { return mSettings.get(); });
 
-	qmlRegisterSingletonType<AICallController>(
-	    Constants::MainQmlUri, 1, 0, "AICallControllerCpp",
-	    [](QQmlEngine *, QJSEngine *) -> QObject * { return new AICallController(); });
+	qmlRegisterSingletonType<CallForgePluginLoader>(Constants::MainQmlUri, 1, 0, "PluginLoaderCpp",
+	                                                [](QQmlEngine *engine, QJSEngine *) -> QObject * {
+		                                                auto *loader = new CallForgePluginLoader();
+		                                                auto *hostContext = new CallForgeHostContextImpl(loader);
+		                                                loader->discoverAndLoad(hostContext);
+		                                                loader->registerQmlContextObjects(engine);
+		                                                return loader;
+	                                                });
 
 	qmlRegisterSingletonType<AccessibilityHelper>(
 	    "AccessibilityHelperCpp", 1, 0, "AccessibilityHelperCpp",

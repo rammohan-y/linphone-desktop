@@ -162,8 +162,6 @@ list(APPEND _LINPHONEAPP_QML_FILES
 	view/Page/Layout/Settings/ChatSettingsLayout.qml
 	view/Page/Layout/Settings/SecuritySettingsLayout.qml
 	view/Page/Layout/Settings/NetworkSettingsLayout.qml
-	view/Page/Layout/Settings/AIAgentSettingsLayout.qml
-	view/Page/Layout/Settings/AIScenarioSettingsLayout.qml
 	view/Page/Layout/Settings/AdvancedSettingsLayout.qml
 	view/Page/Layout/Chat/MessageImdnStatusInfos.qml
 	view/Page/Layout/Chat/MessageInfosLayout.qml

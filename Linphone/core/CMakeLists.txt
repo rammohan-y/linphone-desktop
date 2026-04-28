@@ -1,6 +1,7 @@
 list(APPEND _LINPHONEAPP_SOURCES
-	core/ai/AICallController.cpp
-	core/ai/CaptureFilePoller.cpp
+	core/plugin/CallForgeHostContext.cpp
+	core/plugin/CallForgePluginLoader.cpp
+	core/plugin/CallForgeHostContextImpl.cpp
 
 	core/account/AccountCore.cpp
 	core/account/AccountGui.cpp

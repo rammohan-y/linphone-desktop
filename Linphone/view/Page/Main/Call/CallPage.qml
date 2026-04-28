@@ -20,10 +20,6 @@ AbstractMainPage {
     signal listViewUpdated
     signal goToCallForwardSettings
 
-    // Isolation mode: selecting an AI scenario should behave like a normal call.
-    // We only remember which scenario was chosen; AI can be reintroduced step-by-step later.
-    property int __selectedAiScenarioIndex: -1
-
     onVisibleChanged: if (!visible) {
         goToCallHistory()
     }
@@ -216,75 +212,39 @@ AbstractMainPage {
                             listStackView.push(newCallItem)
                         }
                     }
-                    PopupButton {
-                        id: aiCallButton
-                        icon.source: AppIcons.micro
-                        icon.width: Utils.getSizeWithScreenRatio(24)
-                        icon.height: Utils.getSizeWithScreenRatio(24)
-                        popup.x: 0
-                        visible: SettingsCpp.aiScenarios.length > 0
-                        Accessible.name: "AI Call"
-                        popup.contentItem: ColumnLayout {
-                            spacing: 0
-                            Text {
-                                text: "AI Call — Select Scenario"
-                                color: DefaultStyle.main2_600
-                                font.pixelSize: Utils.getSizeWithScreenRatio(13)
-                                font.weight: 600
-                                Layout.margins: Utils.getSizeWithScreenRatio(8)
-                            }
-                            Repeater {
-                                model: SettingsCpp.aiScenarios
-                                IconLabelButton {
-                                    Layout.fillWidth: true
-                                    text: modelData.name || "Unnamed"
-                                    icon.source: AppIcons.micro
-                                    style: ButtonStyle.noBackground
-                                    onClicked: {
-                                        mainItem.__selectedAiScenarioIndex = index
-                                        AICallControllerCpp.armAICall(index)
-                                        aiCallButton.close()
-                                        // Do not change navigation flow here; let the user place the call the same way
-                                        // as a normal call (history list / contact click / dialer).
+                    Repeater {
+                        id: pluginActionRepeater
+                        model: PluginLoaderCpp.pluginCallPageActions
+                        delegate: PopupButton {
+                            id: pluginPopupBtn
+                            icon.source: modelData.iconSource || AppIcons.micro
+                            icon.width: Utils.getSizeWithScreenRatio(24)
+                            icon.height: Utils.getSizeWithScreenRatio(24)
+                            popup.x: 0
+                            Accessible.name: modelData.title || "Plugin"
+                            popup.contentItem: Loader {
+                                id: pluginPopupLoader
+                                source: modelData.qmlUrl || ""
+                                onItemChanged: {
+                                    if (item && item.requestClose !== undefined) {
+                                        item.requestCloseChanged.connect(function() {
+                                            if (item.requestClose) {
+                                                pluginPopupBtn.close()
+                                                item.requestClose = false
+                                            }
+                                        })
                                     }
                                 }
                             }
                         }
                     }
                 }
-                Rectangle {
-                    id: aiArmedBanner
-                    visible: AICallControllerCpp.armed
-                    Layout.fillWidth: true
-                    Layout.topMargin: Utils.getSizeWithScreenRatio(12)
-                    Layout.rightMargin: Utils.getSizeWithScreenRatio(39)
-                    radius: Utils.getSizeWithScreenRatio(6)
-                    color: AICallControllerCpp.geminiReady ? DefaultStyle.success_500_main : "#E8A317"
-                    height: aiArmedBannerRow.implicitHeight + Utils.getSizeWithScreenRatio(12)
-                    RowLayout {
-                        id: aiArmedBannerRow
-                        anchors.fill: parent
-                        anchors.margins: Utils.getSizeWithScreenRatio(6)
-                        Text {
-                            Layout.fillWidth: true
-                            text: AICallControllerCpp.geminiReady ? "AI ready" : (AICallControllerCpp.status.length > 0 ? AICallControllerCpp.status : "AI armed")
-                            color: DefaultStyle.grey_0
-                            font.pixelSize: Utils.getSizeWithScreenRatio(12)
-                            font.weight: 600
-                            wrapMode: Text.Wrap
-                            maximumLineCount: 2
-                        }
-                        SmallButton {
-                            text: "Cancel"
-                            style: ButtonStyle.noBackground
-                            contentItem: Text {
-                                text: "Cancel"
-                                color: DefaultStyle.grey_0
-                                font.pixelSize: Utils.getSizeWithScreenRatio(11)
-                                font.weight: 600
-                            }
-                            onClicked: AICallControllerCpp.disarmAICall()
-                        }
+                Repeater {
+                    model: PluginLoaderCpp.pluginCallPageActions
+                    delegate: Loader {
+                        Layout.fillWidth: true
+                        active: (modelData.bannerQmlUrl || "") !== ""
+                        source: modelData.bannerQmlUrl || ""
                     }
                 }
                 SearchBar {
@@ -450,43 +410,12 @@ AbstractMainPage {
                         Layout.fillWidth: true
                     }
                 }
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.rightMargin: Utils.getSizeWithScreenRatio(39)
-                    height: aiArmedRow.implicitHeight + Utils.getSizeWithScreenRatio(12)
-                    radius: Utils.getSizeWithScreenRatio(6)
-                    color: AICallControllerCpp.geminiReady ? DefaultStyle.success_500_main : "#E8A317"
-                    visible: AICallControllerCpp.armed
-                    RowLayout {
-                        id: aiArmedRow
-                        anchors.fill: parent
-                        anchors.margins: Utils.getSizeWithScreenRatio(6)
-                        Text {
-                            Layout.fillWidth: true
-                            text: {
-                                if (!AICallControllerCpp.geminiReady)
-                                    return "Connecting to Gemini…"
-                                var scenarios = SettingsCpp.aiScenarios
-                                var idx = AICallControllerCpp.armedScenarioIndex
-                                var name = (idx >= 0 && idx < scenarios.length) ? scenarios[idx].name : ""
-                                return "AI Scenario ready: " + name + " — dial a number"
-                            }
-                            color: DefaultStyle.grey_0
-                            font.pixelSize: Utils.getSizeWithScreenRatio(12)
-                            font.weight: 600
-                            wrapMode: Text.Wrap
-                        }
-                        SmallButton {
-                            text: "Cancel"
-                            style: ButtonStyle.noBackground
-                            contentItem: Text {
-                                text: "Cancel"
-                                color: DefaultStyle.grey_0
-                                font.pixelSize: Utils.getSizeWithScreenRatio(11)
-                                font.weight: 600
-                            }
-                            onClicked: AICallControllerCpp.disarmAICall()
-                        }
+                Repeater {
+                    model: PluginLoaderCpp.pluginCallPageActions
+                    delegate: Loader {
+                        Layout.fillWidth: true
+                        active: (modelData.bannerQmlUrl || "") !== ""
+                        source: modelData.bannerQmlUrl || ""
                     }
                 }
                 NewCallForm {

@@ -19,6 +19,8 @@ AbstractMainPage {
 	signal goBackRequested()
 	
 	function layoutUrl(name) {
+		if (name.indexOf("qrc:") === 0 || name.indexOf("file:") === 0 || name.indexOf("/") === 0)
+			return name
 		return layoutsPath+"/"+name+".qml"
 	}
 	

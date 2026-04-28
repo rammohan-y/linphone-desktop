@@ -48,6 +48,31 @@ AbstractWindow {
     property Item lastButtonInBottomTab : mainWindow.startingCall ? Utils.getLastFocusableItemInItem(controlCallButtons) : endCallButton
 
     property double __uiInitT0: Date.now()
+    property var __pluginPanelComponent: null
+
+    function showPluginPanel() {
+        if (rightPanel.visible && rightPanel.contentLoader.item
+                && rightPanel.contentLoader.item.objectName === "plugin_aiAgent") return
+        var panels = PluginLoaderCpp.pluginCallPanels
+        if (panels.length === 0) return
+        if (!mainWindow.__pluginPanelComponent)
+            mainWindow.__pluginPanelComponent = Qt.createComponent(panels[0].qmlUrl)
+        if (mainWindow.__pluginPanelComponent && mainWindow.__pluginPanelComponent.status === Component.Ready) {
+            rightPanel.visible = true
+            rightPanel.replace(mainWindow.__pluginPanelComponent)
+        }
+    }
+
+    Connections {
+        target: AICallControllerCpp
+        function onActiveChanged() {
+            if (AICallControllerCpp.active) mainWindow.showPluginPanel()
+        }
+        function onArmedChanged() {
+            if (AICallControllerCpp.armed) mainWindow.showPluginPanel()
+        }
+    }
+
     // Loader perf: time spent in each callState + transitions (window-relative).
     property int __callLoaderPrevState: -999
     property double __callLoaderStateAt: Date.now()
@@ -58,6 +83,7 @@ AbstractWindow {
                     "callState=", mainWindow.callState,
                     "haveCall=", callsModel.haveCall,
                     "visible=", mainWindow.visible)
+        if (PluginLoaderCpp.pluginCallPanels.length > 0) showPluginPanel()
     }
 
     onCallStateChanged: {
@@ -141,21 +167,6 @@ AbstractWindow {
         }
     }
     
-    Connections {
-        target: AICallControllerCpp
-        function onActiveChanged() {
-            if (AICallControllerCpp.active) {
-                rightPanel.visible = true
-                // Defer: replace is heavy; must not run on the same main-thread tick as capture setup.
-                Qt.callLater(function () {
-                    console.log("[UIInit] CallsWindow.qml replacing rightPanel -> aiAgentPanel dt_ms=",
-                                (Date.now() - __uiInitT0))
-                    rightPanel.replace(aiAgentPanel)
-                })
-            }
-        }
-    }
-
     signal keyPressedOnDialer(KeyEvent event)
 
 
@@ -781,6 +792,7 @@ AbstractWindow {
                     Connections {
                         target: rightPanel.contentLoader
                         function onItemChanged() {
+                            rightPanel.header.visible = true
                             if (rightPanel.contentLoader.item) {
                                 if (rightPanel.contentLoader.item.objectName === "callTransferPanel") {
                                     //: "Transférer %1 à…"
@@ -824,6 +836,12 @@ AbstractWindow {
                                     //: Statistiques
                                     rightPanel.headerTitleText = qsTr("call_stats_title")
                                 }
+                                else if (rightPanel.contentLoader.item.objectName.startsWith("plugin_")) {
+                                    rightPanel.headerTitleText = rightPanel.contentLoader.item.pluginTitle || rightPanel.contentLoader.item.objectName
+                                    rightPanel.header.visible = false
+                                    rightPanel.contentLoader.item.width = Qt.binding(function() { return rightPanel.contentLoader.width })
+                                    rightPanel.contentLoader.item.height = Qt.binding(function() { return rightPanel.contentItemHeight })
+                                }
                             }
                             if (!rightPanel.contentLoader.item || rightPanel.contentLoader.item.objectName !== "participantListPanel") rightPanel.headerStack.currentIndex = 0
                             if (!rightPanel.contentLoader.item || rightPanel.contentLoader.item.objectName !== "callTransferPanel") transferCallButton.checked = false
@@ -856,6 +874,8 @@ AbstractWindow {
                         anchors.right: parent.right
                         height: childrenRect.height
                     }
+                }
+                Component.onCompleted: {
                 }
             }
 
@@ -1404,153 +1424,6 @@ AbstractWindow {
                                 }
                             }
                         }
-                    }
-                }
-            }
-            Component {
-                id: aiAgentPanel
-                Control.Control {
-                    objectName: "aiAgentPanel"
-                    width: parent.width
-                    Keys.onEscapePressed: event => {
-                        rightPanel.visible = false
-                        event.accepted = true
-                    }
-
-                    ColumnLayout {
-                        width: parent.width
-                        height: rightPanel.contentItemHeight
-                        spacing: Utils.getSizeWithScreenRatio(10)
-
-                        Text {
-                            text: AICallControllerCpp.activeScenarioName.length > 0
-                                  ? "AI Scenario - " + AICallControllerCpp.activeScenarioName
-                                  : "AI Scenario"
-                            color: DefaultStyle.main2_600
-                            font {
-                                pixelSize: Utils.getSizeWithScreenRatio(16)
-                                weight: 600
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: aiStatusText.implicitHeight + Utils.getSizeWithScreenRatio(12)
-                            radius: Utils.getSizeWithScreenRatio(6)
-                            color: AICallControllerCpp.active ? DefaultStyle.success_500_main : DefaultStyle.grey_200
-                            visible: AICallControllerCpp.status.length > 0
-                            Text {
-                                id: aiStatusText
-                                anchors.centerIn: parent
-                                width: parent.width - Utils.getSizeWithScreenRatio(16)
-                                text: AICallControllerCpp.status
-                                color: AICallControllerCpp.active ? DefaultStyle.grey_0 : DefaultStyle.main2_600
-                                font.pixelSize: Utils.getSizeWithScreenRatio(12)
-                                wrapMode: Text.Wrap
-                                horizontalAlignment: Text.AlignHCenter
-                            }
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: Utils.getSizeWithScreenRatio(6)
-                            visible: !AICallControllerCpp.active
-
-                            Text {
-                                text: "Select a scenario to start:"
-                                color: DefaultStyle.main2_400
-                                font.pixelSize: Utils.getSizeWithScreenRatio(12)
-                            }
-
-                            Repeater {
-                                model: SettingsCpp.aiScenarios
-                                delegate: Rectangle {
-                                    Layout.fillWidth: true
-                                    height: scenarioRow.implicitHeight + Utils.getSizeWithScreenRatio(12)
-                                    radius: Utils.getSizeWithScreenRatio(8)
-                                    border.color: DefaultStyle.grey_200
-                                    border.width: 1
-                                    color: "transparent"
-
-                                    RowLayout {
-                                        id: scenarioRow
-                                        anchors.fill: parent
-                                        anchors.margins: Utils.getSizeWithScreenRatio(6)
-
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            spacing: 1
-                                            Text {
-                                                text: modelData.name || "Unnamed"
-                                                font: Typography.p2l
-                                                color: DefaultStyle.main2_600
-                                            }
-                                            Text {
-                                                property var agentNames: SettingsCpp.getAgentNames()
-                                                text: {
-                                                    var idx = modelData.agentIndex || 0
-                                                    var name = (agentNames && idx < agentNames.length) ? agentNames[idx] : "No agent"
-                                                    return name
-                                                }
-                                                font.pixelSize: Utils.getSizeWithScreenRatio(11)
-                                                font.italic: true
-                                                color: DefaultStyle.main2_400
-                                            }
-                                        }
-
-                                        SmallButton {
-                                            style: ButtonStyle.main
-                                            text: "Start"
-                                            onClicked: {
-                                                AICallControllerCpp.startAICall(index)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            Text {
-                                visible: SettingsCpp.aiScenarios.length === 0
-                                text: "No scenarios configured.\nGo to Settings → AI Scenarios to add one."
-                                color: DefaultStyle.main2_400
-                                font.pixelSize: Utils.getSizeWithScreenRatio(12)
-                                wrapMode: Text.Wrap
-                                Layout.fillWidth: true
-                            }
-                        }
-
-                        Control.ScrollView {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            visible: AICallControllerCpp.active
-                            clip: true
-
-                            Text {
-                                id: transcriptText
-                                width: parent.width
-                                text: AICallControllerCpp.transcript || "Waiting for conversation..."
-                                color: DefaultStyle.main2_600
-                                font.pixelSize: Utils.getSizeWithScreenRatio(12)
-                                font.family: "monospace"
-                                wrapMode: Text.Wrap
-
-                                onTextChanged: {
-                                    if (parent && parent.contentItem) {
-                                        parent.contentItem.contentY = Math.max(0, parent.contentItem.contentHeight - parent.height)
-                                    }
-                                }
-                            }
-                        }
-
-                        MediumButton {
-                            Layout.fillWidth: true
-                            visible: AICallControllerCpp.active
-                            style: ButtonStyle.secondary
-                            text: "Stop AI"
-                            onClicked: AICallControllerCpp.stopAICall()
-                        }
-
-                        Item { Layout.fillHeight: true; visible: !AICallControllerCpp.active }
                     }
                 }
             }
@@ -2209,18 +2082,26 @@ AbstractWindow {
                                     moreOptionsButton.close()
                                 }
                             }
-                            IconLabelButton {
-                                Layout.fillWidth: true
-                                icon.source: AppIcons.micro
-                                text: "AI Scenario"
-                                icon.width: Utils.getSizeWithScreenRatio(32)
-                                icon.height: Utils.getSizeWithScreenRatio(32)
-                                style: ButtonStyle.noBackground
-                                visible: mainWindow.call && !mainWindow.conference
-                                onClicked: {
-                                    rightPanel.visible = true
-                                    rightPanel.replace(aiAgentPanel)
-                                    moreOptionsButton.close()
+                            Repeater {
+                                model: PluginLoaderCpp.pluginMoreOptionsEntries
+                                delegate: IconLabelButton {
+                                    Layout.fillWidth: true
+                                    icon.source: modelData.iconSource || ""
+                                    text: modelData.title || ""
+                                    icon.width: Utils.getSizeWithScreenRatio(32)
+                                    icon.height: Utils.getSizeWithScreenRatio(32)
+                                    style: ButtonStyle.noBackground
+                                    visible: mainWindow.call && !mainWindow.conference
+                                    onClicked: {
+                                        if (modelData.qmlUrl) {
+                                            rightPanel.visible = true
+                                            var comp = Qt.createComponent(modelData.qmlUrl)
+                                            if (comp.status === Component.Ready) {
+                                                rightPanel.replace(comp)
+                                            }
+                                        }
+                                        moreOptionsButton.close()
+                                    }
                                 }
                             }
                             IconLabelButton {

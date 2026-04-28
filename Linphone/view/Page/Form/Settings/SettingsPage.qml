@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Controls.Basic as Control
+import Linphone
 import SettingsCpp
 import UtilsCpp
 
@@ -23,8 +24,6 @@ AbstractSettingsMenu {
         {title: qsTr("settings_meetings_title"), layout: "MeetingsSettingsLayout", visible: !SettingsCpp.disableMeetingsFeature},
         //: "Réseau"
         {title: qsTr("settings_network_title"), layout: "NetworkSettingsLayout"},
-        {title: "AI Vendors", layout: "AIAgentSettingsLayout"},
-        {title: "AI Scenarios", layout: "AIScenarioSettingsLayout"},
         //: "Paramètres avancés"
         {title: qsTr("settings_advanced_title"), layout: "AdvancedSettingsLayout"}
 	]
@@ -51,5 +50,13 @@ AbstractSettingsMenu {
 	
 	Component.onCompleted: {
 		SettingsCpp.isSaved = true
+		var pluginTabs = PluginLoaderCpp.pluginSettingsTabs
+		if (pluginTabs && pluginTabs.length > 0) {
+			var merged = families.slice()
+			for (var i = 0; i < pluginTabs.length; i++) {
+				merged.push(pluginTabs[i])
+			}
+			families = merged
+		}
 	}
 }
