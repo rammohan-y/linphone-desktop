@@ -1,11 +1,19 @@
 // Copyright (c) 2026 Rammohan Yadavalli. All rights reserved. Proprietary.
 #include "CallForgeBridge.hpp"
 
+#include "core/App.hpp"
+#include "core/call/CallCore.hpp"
+#include "core/call/CallList.hpp"
+#include "core/plugin/CallForgeHostContextImpl.hpp"
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QJsonDocument>
 #include <QTimer>
 #include <QtEndian>
+
+#include <mediastreamer2/mediastream.h>
+#include <mediastreamer2/msaudiomixer.h>
 
 static constexpr uint8_t FRAME_TYPE_JSON = 0x01;
 static constexpr int FRAME_HEADER_SIZE = 5; // 1 byte type + 4 bytes length
@@ -104,16 +112,80 @@ void CallForgeBridge::armAICall(int scenarioIndex) {
 	if (scenarioIndex >= 0 && scenarioIndex < scenarios.size())
 		mArmedScenarioName = scenarios[scenarioIndex].toMap()["name"].toString();
 	else mArmedScenarioName.clear();
+	mAiStatus = QStringLiteral("Armed — waiting for call");
 	qInfo() << "[CallForgeBridge] Armed scenario:" << mArmedScenarioIndex << mArmedScenarioName;
 	emit armedChanged();
+	emit aiStateChanged();
+
+	sendMessage({{"cmd", "armAICall"}, {"scenarioIndex", scenarioIndex}});
+
+	auto *app = App::getInstance();
+	auto callList = app ? app->getCallList() : nullptr;
+	if (callList) {
+		if (mCallListConn) disconnect(mCallListConn);
+		mCallListConn = connect(callList.get(), &CallList::currentCallChanged, this, [this]() {
+			if (!mArmed && !mAiActive) return;
+			ensureCallHandle();
+		});
+		ensureCallHandle();
+	}
 }
 
 void CallForgeBridge::disarmAICall() {
 	mArmed = false;
 	mArmedScenarioIndex = -1;
 	mArmedScenarioName.clear();
+	mAiActive = false;
+	mAiStatus.clear();
 	qInfo() << "[CallForgeBridge] Disarmed";
 	emit armedChanged();
+	emit aiStateChanged();
+
+	sendMessage({{"cmd", "disarmAICall"}});
+	releaseCallHandle();
+}
+
+QString CallForgeBridge::getCallPanelQml() const {
+	return mCallPanelQml;
+}
+
+// --- AI call state ---
+
+bool CallForgeBridge::isAiActive() const {
+	return mAiActive;
+}
+
+QString CallForgeBridge::getAiStatus() const {
+	return mAiStatus;
+}
+
+QString CallForgeBridge::getAiTranscript() const {
+	return mAiTranscript;
+}
+
+void CallForgeBridge::startAICall() {
+	if (!mArmed) return;
+	mAiActive = true;
+	mAiStatus = QStringLiteral("Connecting to AI...");
+	mAiTranscript.clear();
+	qInfo() << "[CallForgeBridge] AI call started for scenario:" << mArmedScenarioName;
+	emit aiStateChanged();
+	emit aiTranscriptChanged();
+
+	QJsonObject msg;
+	msg["cmd"] = QStringLiteral("startAICall");
+	msg["scenarioIndex"] = mArmedScenarioIndex;
+	sendMessage(msg);
+}
+
+void CallForgeBridge::stopAICall() {
+	mAiActive = false;
+	mAiStatus = QStringLiteral("AI stopped");
+	qInfo() << "[CallForgeBridge] AI call stopped";
+	emit aiStateChanged();
+
+	sendMessage({{"cmd", "stopAICall"}});
+	releaseCallHandle();
 }
 
 // --- Scenario CRUD ---
@@ -255,9 +327,13 @@ void CallForgeBridge::handleMessage(const QJsonObject &msg) {
 		}
 		qInfo() << "[CallForgeBridge] Received" << mSettingsTabs.size() << "settings tabs from daemon";
 
+		mCallPanelQml = msg["callPanelQml"].toString();
+		qInfo() << "[CallForgeBridge] Call panel QML:" << (mCallPanelQml.isEmpty() ? "none" : "received");
+
 		mDaemonConnected = true;
 		emit daemonConnectedChanged();
 		emit settingsTabsChanged();
+		emit callPanelQmlChanged();
 
 		// Request initial data
 		sendMessage({{"cmd", "getAgents"}});
@@ -282,7 +358,139 @@ void CallForgeBridge::handleMessage(const QJsonObject &msg) {
 		qInfo() << "[CallForgeBridge] Agent test:" << success << message;
 		emit aiAgentTestResult(success, message);
 
+	} else if (event == QStringLiteral("aiStatus")) {
+		mAiStatus = msg["status"].toString();
+		mAiActive = msg["active"].toBool();
+		qInfo() << "[CallForgeBridge] AI status:" << mAiActive << mAiStatus;
+		emit aiStateChanged();
+
+	} else if (event == QStringLiteral("aiTranscript")) {
+		mAiTranscript = msg["transcript"].toString();
+		emit aiTranscriptChanged();
+
+	} else if (event == QStringLiteral("startCapture") || event == QStringLiteral("stopCapture") ||
+	           event == QStringLiteral("playToRemote") || event == QStringLiteral("setMicMute")) {
+		handleDaemonEvent(event, msg);
+
 	} else if (event == QStringLiteral("error")) {
 		qWarning() << "[CallForgeBridge] Daemon error:" << msg["message"].toString();
+	}
+}
+
+// --- SDK proxy: execute daemon commands on the current call ---
+
+void CallForgeBridge::ensureCallHandle() {
+	auto *app = App::getInstance();
+	auto callList = app ? app->getCallList() : nullptr;
+	if (!callList) return;
+
+	auto callCore = callList->getCurrentCallCore();
+	if (!callCore) return;
+
+	if (mCallHandle && mCallHandle->callCore() == callCore) return;
+
+	releaseCallHandle();
+	mCallHandle = new CallHandleImpl(callCore, this);
+
+	mCallStateConn = connect(mCallHandle, &CallHandle::stateChanged, this, &CallForgeBridge::onCallStateForwarded);
+
+	mCallEndConn = connect(mCallHandle, &CallHandle::stateChanged, this, [this](int s) {
+		if (s == 14 || s == 13 || s == 19) {
+			qInfo() << "[CallForgeBridge] Call ended, forwarding to daemon";
+			sendMessage({{"cmd", "callStateChanged"}, {"state", s}, {"sampleRate", 0}});
+			if (mAiActive) stopAICall();
+		}
+	});
+
+	if (mCallHandle->isActive()) {
+		int sr = mCallHandle->audioSampleRate();
+		qInfo() << "[CallForgeBridge] Call already active, forwarding StreamsRunning sampleRate=" << sr;
+		sendMessage({{"cmd", "callStateChanged"}, {"state", 8}, {"sampleRate", sr}});
+	}
+}
+
+void CallForgeBridge::releaseCallHandle() {
+	if (mCallStateConn) {
+		disconnect(mCallStateConn);
+		mCallStateConn = {};
+	}
+	if (mCallEndConn) {
+		disconnect(mCallEndConn);
+		mCallEndConn = {};
+	}
+	if (mPlayFinishedConn) {
+		disconnect(mPlayFinishedConn);
+		mPlayFinishedConn = {};
+	}
+	if (mCallListConn) {
+		disconnect(mCallListConn);
+		mCallListConn = {};
+	}
+	delete mCallHandle;
+	mCallHandle = nullptr;
+}
+
+void CallForgeBridge::onCallStateForwarded(int state) {
+	int sr = 0;
+	if (state == 8 && mCallHandle) sr = mCallHandle->audioSampleRate();
+	qInfo() << "[CallForgeBridge] Forwarding callState=" << state << "sampleRate=" << sr;
+	sendMessage({{"cmd", "callStateChanged"}, {"state", state}, {"sampleRate", sr}});
+}
+
+void CallForgeBridge::handleDaemonEvent(const QString &event, const QJsonObject &msg) {
+	if (!mCallHandle) {
+		qWarning() << "[CallForgeBridge] No call handle for daemon event:" << event;
+		return;
+	}
+
+	if (event == QStringLiteral("startCapture")) {
+		QString filePath = msg["filePath"].toString();
+		qInfo() << "[CallForgeBridge] startCapture:" << filePath;
+
+		mCallHandle->startMixedRecordToFile(filePath);
+
+		// Disable outbound_mixer output pin so only callee audio is captured
+		AudioStream *stream = reinterpret_cast<AudioStream *>(mCallHandle->audioStreamPtr());
+		if (stream && stream->outbound_mixer) {
+			MSAudioMixerCtl mctl = {0};
+			mctl.pin = 1;
+			mctl.param.enabled = FALSE;
+			ms_filter_call_method(stream->outbound_mixer, MS_AUDIO_MIXER_ENABLE_OUTPUT, &mctl);
+			qInfo() << "[CallForgeBridge] Disabled outbound_mixer output pin 1";
+		}
+
+		sendMessage({{"cmd", "captureStarted"}, {"filePath", filePath}});
+
+	} else if (event == QStringLiteral("stopCapture")) {
+		qInfo() << "[CallForgeBridge] stopCapture";
+		mCallHandle->stopMixedRecord();
+
+	} else if (event == QStringLiteral("playToRemote")) {
+		QString filePath = msg["filePath"].toString();
+		qInfo() << "[CallForgeBridge] playToRemote:" << filePath;
+
+		if (mPlayFinishedConn) disconnect(mPlayFinishedConn);
+		mPlayFinishedConn = connect(mCallHandle, &CallHandle::filePlayFinished, this, [this]() {
+			qInfo() << "[CallForgeBridge] Playback finished, notifying daemon";
+			if (mPlayFinishedConn) {
+				disconnect(mPlayFinishedConn);
+				mPlayFinishedConn = {};
+			}
+			sendMessage({{"cmd", "playbackFinished"}});
+		});
+
+		mCallHandle->playFileToRemote(filePath);
+
+	} else if (event == QStringLiteral("setMicMute")) {
+		bool muted = msg["muted"].toBool();
+		qInfo() << "[CallForgeBridge] setMicMute:" << muted;
+
+		if (muted) {
+			mMicWasMuted = mCallHandle->isMicrophoneMuted();
+		}
+		mCallHandle->setMicrophoneMuted(muted);
+		if (!muted && mMicWasMuted) {
+			mCallHandle->setMicrophoneMuted(true);
+		}
 	}
 }

@@ -8,6 +8,8 @@
 #include <QObject>
 #include <QProcess>
 
+class CallHandleImpl;
+
 class CallForgeBridge : public QObject {
 	Q_OBJECT
 
@@ -16,6 +18,10 @@ class CallForgeBridge : public QObject {
 	Q_PROPERTY(bool armed READ isArmed NOTIFY armedChanged)
 	Q_PROPERTY(int armedScenarioIndex READ getArmedScenarioIndex NOTIFY armedChanged)
 	Q_PROPERTY(QString armedScenarioName READ getArmedScenarioName NOTIFY armedChanged)
+	Q_PROPERTY(QString callPanelQml READ getCallPanelQml NOTIFY callPanelQmlChanged)
+	Q_PROPERTY(bool aiActive READ isAiActive NOTIFY aiStateChanged)
+	Q_PROPERTY(QString aiStatus READ getAiStatus NOTIFY aiStateChanged)
+	Q_PROPERTY(QString aiTranscript READ getAiTranscript NOTIFY aiTranscriptChanged)
 
 public:
 	explicit CallForgeBridge(QObject *parent = nullptr);
@@ -26,6 +32,10 @@ public:
 	bool isArmed() const;
 	int getArmedScenarioIndex() const;
 	QString getArmedScenarioName() const;
+	QString getCallPanelQml() const;
+	bool isAiActive() const;
+	QString getAiStatus() const;
+	QString getAiTranscript() const;
 
 	Q_INVOKABLE QVariantList getAiAgents() const;
 	Q_INVOKABLE void addAiAgent(const QVariantMap &agent);
@@ -41,6 +51,8 @@ public:
 
 	Q_INVOKABLE void armAICall(int scenarioIndex);
 	Q_INVOKABLE void disarmAICall();
+	Q_INVOKABLE void startAICall();
+	Q_INVOKABLE void stopAICall();
 
 signals:
 	void daemonConnectedChanged();
@@ -49,6 +61,9 @@ signals:
 	void aiScenariosChanged();
 	void aiAgentTestResult(bool success, QString message);
 	void armedChanged();
+	void callPanelQmlChanged();
+	void aiStateChanged();
+	void aiTranscriptChanged();
 
 private slots:
 	void onSocketConnected();
@@ -71,10 +86,27 @@ private:
 	QJsonArray mScenarios;
 	QStringList mAgentNames;
 	QVariantList mSettingsTabs;
+	QString mCallPanelQml;
 
 	bool mArmed = false;
 	int mArmedScenarioIndex = -1;
 	QString mArmedScenarioName;
+
+	bool mAiActive = false;
+	QString mAiStatus;
+	QString mAiTranscript;
+
+	CallHandleImpl *mCallHandle = nullptr;
+	QMetaObject::Connection mCallStateConn;
+	QMetaObject::Connection mCallEndConn;
+	QMetaObject::Connection mPlayFinishedConn;
+	QMetaObject::Connection mCallListConn;
+	bool mMicWasMuted = false;
+
+	void ensureCallHandle();
+	void releaseCallHandle();
+	void onCallStateForwarded(int state);
+	void handleDaemonEvent(const QString &event, const QJsonObject &msg);
 };
 
 #endif

@@ -48,28 +48,46 @@ AbstractWindow {
     property Item lastButtonInBottomTab : mainWindow.startingCall ? Utils.getLastFocusableItemInItem(controlCallButtons) : endCallButton
 
     property double __uiInitT0: Date.now()
-    property var __pluginPanelComponent: null
 
-    function showPluginPanel() {
+    function showAiPanel() {
         if (rightPanel.visible && rightPanel.contentLoader.item
                 && rightPanel.contentLoader.item.objectName === "plugin_aiAgent") return
-        var panels = PluginLoaderCpp.pluginCallPanels
-        if (panels.length === 0) return
-        if (!mainWindow.__pluginPanelComponent)
-            mainWindow.__pluginPanelComponent = Qt.createComponent(panels[0].qmlUrl)
-        if (mainWindow.__pluginPanelComponent && mainWindow.__pluginPanelComponent.status === Component.Ready) {
-            rightPanel.visible = true
-            rightPanel.replace(mainWindow.__pluginPanelComponent)
+        var qmlStr = CallForgeBridgeCpp.callPanelQml
+        if (!qmlStr || qmlStr.length === 0) return
+        rightPanel.visible = true
+        rightPanel.replace(aiPanelComponent)
+    }
+
+    Component {
+        id: aiPanelComponent
+        Item {
+            id: aiPanelHost
+            objectName: "plugin_aiAgent"
+            property string pluginTitle: "AI Agent"
+            property var __daemonObj: null
+            Component.onCompleted: {
+                var qmlStr = CallForgeBridgeCpp.callPanelQml
+                if (qmlStr && qmlStr.length > 0) {
+                    __daemonObj = Qt.createQmlObject(qmlStr, aiPanelHost, "daemon-call-panel")
+                    if (__daemonObj) {
+                        __daemonObj.width = Qt.binding(function() { return aiPanelHost.width })
+                        __daemonObj.height = Qt.binding(function() { return aiPanelHost.height })
+                    }
+                }
+            }
+            Component.onDestruction: {
+                if (__daemonObj) __daemonObj.destroy()
+            }
         }
     }
 
     Connections {
-        target: AICallControllerCpp
-        function onActiveChanged() {
-            if (AICallControllerCpp.active) mainWindow.showPluginPanel()
+        target: CallForgeBridgeCpp
+        function onAiStateChanged() {
+            if (CallForgeBridgeCpp.aiActive) mainWindow.showAiPanel()
         }
         function onArmedChanged() {
-            if (AICallControllerCpp.armed) mainWindow.showPluginPanel()
+            if (CallForgeBridgeCpp.armed) mainWindow.showAiPanel()
         }
     }
 
@@ -83,7 +101,7 @@ AbstractWindow {
                     "callState=", mainWindow.callState,
                     "haveCall=", callsModel.haveCall,
                     "visible=", mainWindow.visible)
-        if (PluginLoaderCpp.pluginCallPanels.length > 0) showPluginPanel()
+        if (CallForgeBridgeCpp.callPanelQml.length > 0) showAiPanel()
     }
 
     onCallStateChanged: {
