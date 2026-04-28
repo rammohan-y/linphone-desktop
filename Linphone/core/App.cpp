@@ -82,8 +82,6 @@
 #include "core/payload-type/PayloadTypeProxy.hpp"
 #include "core/phone-number/PhoneNumber.hpp"
 #include "core/phone-number/PhoneNumberProxy.hpp"
-#include "core/plugin/CallForgeHostContextImpl.hpp"
-#include "core/plugin/CallForgePluginLoader.hpp"
 #include "core/recorder/RecorderGui.hpp"
 #include "core/register/RegisterPage.hpp"
 #include "core/screen/ScreenList.hpp"
@@ -981,15 +979,6 @@ void App::initCppInterfaces() {
 	qmlRegisterSingletonType<SettingsCore>(
 	    "SettingsCpp", 1, 0, "SettingsCpp",
 	    [this](QQmlEngine *engine, QJSEngine *) -> QObject * { return mSettings.get(); });
-
-	qmlRegisterSingletonType<CallForgePluginLoader>(Constants::MainQmlUri, 1, 0, "PluginLoaderCpp",
-	                                                [](QQmlEngine *engine, QJSEngine *) -> QObject * {
-		                                                auto *loader = new CallForgePluginLoader();
-		                                                auto *hostContext = new CallForgeHostContextImpl(loader);
-		                                                loader->discoverAndLoad(hostContext);
-		                                                loader->registerQmlContextObjects(engine);
-		                                                return loader;
-	                                                });
 
 	auto *callForgeBridge = new CallForgeBridge(this);
 	mEngine->rootContext()->setContextProperty("CallForgeBridgeCpp", callForgeBridge);

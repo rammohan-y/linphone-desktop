@@ -2,9 +2,9 @@
 #include "CallForgeBridge.hpp"
 
 #include "core/App.hpp"
+#include "core/bridge/CallHandleImpl.hpp"
 #include "core/call/CallCore.hpp"
 #include "core/call/CallList.hpp"
-#include "core/plugin/CallForgeHostContextImpl.hpp"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -391,7 +391,7 @@ void CallForgeBridge::ensureCallHandle() {
 	releaseCallHandle();
 	mCallHandle = new CallHandleImpl(callCore, this);
 
-	mCallStateConn = connect(mCallHandle, &CallHandle::stateChanged, this, &CallForgeBridge::onCallStateForwarded);
+	mCallStateConn = connect(mCallHandle, &CallHandleImpl::stateChanged, this, &CallForgeBridge::onCallStateForwarded);
 
 	if (mCallHandle->isActive()) {
 		int sr = mCallHandle->audioSampleRate();
@@ -467,7 +467,7 @@ void CallForgeBridge::handleDaemonEvent(const QString &event, const QJsonObject 
 		qInfo() << "[CallForgeBridge] playToRemote:" << filePath;
 
 		if (mPlayFinishedConn) disconnect(mPlayFinishedConn);
-		mPlayFinishedConn = connect(mCallHandle, &CallHandle::filePlayFinished, this, [this]() {
+		mPlayFinishedConn = connect(mCallHandle, &CallHandleImpl::filePlayFinished, this, [this]() {
 			qInfo() << "[CallForgeBridge] Playback finished, notifying daemon";
 			if (mPlayFinishedConn) {
 				disconnect(mPlayFinishedConn);

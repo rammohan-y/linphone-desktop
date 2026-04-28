@@ -2100,28 +2100,6 @@ AbstractWindow {
                                     moreOptionsButton.close()
                                 }
                             }
-                            Repeater {
-                                model: PluginLoaderCpp.pluginMoreOptionsEntries
-                                delegate: IconLabelButton {
-                                    Layout.fillWidth: true
-                                    icon.source: modelData.iconSource || ""
-                                    text: modelData.title || ""
-                                    icon.width: Utils.getSizeWithScreenRatio(32)
-                                    icon.height: Utils.getSizeWithScreenRatio(32)
-                                    style: ButtonStyle.noBackground
-                                    visible: mainWindow.call && !mainWindow.conference
-                                    onClicked: {
-                                        if (modelData.qmlUrl) {
-                                            rightPanel.visible = true
-                                            var comp = Qt.createComponent(modelData.qmlUrl)
-                                            if (comp.status === Component.Ready) {
-                                                rightPanel.replace(comp)
-                                            }
-                                        }
-                                        moreOptionsButton.close()
-                                    }
-                                }
-                            }
                             IconLabelButton {
                                 Layout.fillWidth: true
                                 checkable: true

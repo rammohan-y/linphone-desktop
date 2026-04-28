@@ -1,8 +1,6 @@
 list(APPEND _LINPHONEAPP_SOURCES
 	core/bridge/CallForgeBridge.cpp
-	core/plugin/CallForgeHostContext.cpp
-	core/plugin/CallForgePluginLoader.cpp
-	core/plugin/CallForgeHostContextImpl.cpp
+	core/bridge/CallHandleImpl.cpp
 
 	core/account/AccountCore.cpp
 	core/account/AccountGui.cpp
