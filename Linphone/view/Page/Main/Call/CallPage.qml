@@ -212,39 +212,81 @@ AbstractMainPage {
                             listStackView.push(newCallItem)
                         }
                     }
-                    Repeater {
-                        id: pluginActionRepeater
-                        model: PluginLoaderCpp.pluginCallPageActions
-                        delegate: PopupButton {
-                            id: pluginPopupBtn
-                            icon.source: modelData.iconSource || AppIcons.micro
-                            icon.width: Utils.getSizeWithScreenRatio(24)
-                            icon.height: Utils.getSizeWithScreenRatio(24)
-                            popup.x: 0
-                            Accessible.name: modelData.title || "Plugin"
-                            popup.contentItem: Loader {
-                                id: pluginPopupLoader
-                                source: modelData.qmlUrl || ""
-                                onItemChanged: {
-                                    if (item && item.requestClose !== undefined) {
-                                        item.requestCloseChanged.connect(function() {
-                                            if (item.requestClose) {
-                                                pluginPopupBtn.close()
-                                                item.requestClose = false
-                                            }
-                                        })
+                    PopupButton {
+                        id: daemonActionBtn
+                        visible: CallForgeBridgeCpp.daemonConnected
+                        icon.source: AppIcons.micro
+                        icon.width: Utils.getSizeWithScreenRatio(24)
+                        icon.height: Utils.getSizeWithScreenRatio(24)
+                        popup.x: 0
+                        Accessible.name: "AI Call"
+                        onPressed: aiScenarioRepeater.model = CallForgeBridgeCpp.getAiScenarios()
+                        popup.contentItem: ColumnLayout {
+                            spacing: 0
+                            implicitWidth: Utils.getSizeWithScreenRatio(220)
+                            Text {
+                                text: "AI Call — Select Scenario"
+                                color: DefaultStyle.main2_600
+                                font.pixelSize: Utils.getSizeWithScreenRatio(13)
+                                font.weight: 600
+                                Layout.margins: Utils.getSizeWithScreenRatio(8)
+                            }
+                            Repeater {
+                                id: aiScenarioRepeater
+                                model: []
+                                IconLabelButton {
+                                    Layout.fillWidth: true
+                                    text: modelData.name || "Unnamed"
+                                    icon.source: AppIcons.micro
+                                    style: ButtonStyle.noBackground
+                                    onClicked: {
+                                        CallForgeBridgeCpp.armAICall(index)
+                                        daemonActionBtn.close()
                                     }
                                 }
+                            }
+                            Text {
+                                visible: aiScenarioRepeater.count === 0
+                                text: "No scenarios configured.\nGo to Settings → AI Scenarios."
+                                color: DefaultStyle.main2_400
+                                font.pixelSize: Utils.getSizeWithScreenRatio(12)
+                                wrapMode: Text.Wrap
+                                Layout.margins: Utils.getSizeWithScreenRatio(8)
                             }
                         }
                     }
                 }
-                Repeater {
-                    model: PluginLoaderCpp.pluginCallPageActions
-                    delegate: Loader {
-                        Layout.fillWidth: true
-                        active: (modelData.bannerQmlUrl || "") !== ""
-                        source: modelData.bannerQmlUrl || ""
+                Rectangle {
+                    visible: CallForgeBridgeCpp.armed
+                    Layout.fillWidth: true
+                    Layout.topMargin: visible ? Utils.getSizeWithScreenRatio(12) : 0
+                    Layout.rightMargin: visible ? Utils.getSizeWithScreenRatio(39) : 0
+                    implicitHeight: visible ? armedBannerRow.implicitHeight + Utils.getSizeWithScreenRatio(12) : 0
+                    radius: Utils.getSizeWithScreenRatio(6)
+                    color: DefaultStyle.success_500_main
+                    RowLayout {
+                        id: armedBannerRow
+                        anchors.fill: parent
+                        anchors.margins: Utils.getSizeWithScreenRatio(6)
+                        Text {
+                            Layout.fillWidth: true
+                            text: "AI armed: " + CallForgeBridgeCpp.armedScenarioName + " — dial a number"
+                            color: DefaultStyle.grey_0
+                            font.pixelSize: Utils.getSizeWithScreenRatio(12)
+                            font.weight: 600
+                            wrapMode: Text.Wrap
+                            maximumLineCount: 2
+                        }
+                        SmallButton {
+                            style: ButtonStyle.noBackground
+                            contentItem: Text {
+                                text: "Cancel"
+                                color: DefaultStyle.grey_0
+                                font.pixelSize: Utils.getSizeWithScreenRatio(11)
+                                font.weight: 600
+                            }
+                            onClicked: CallForgeBridgeCpp.disarmAICall()
+                        }
                     }
                 }
                 SearchBar {
@@ -410,12 +452,37 @@ AbstractMainPage {
                         Layout.fillWidth: true
                     }
                 }
-                Repeater {
-                    model: PluginLoaderCpp.pluginCallPageActions
-                    delegate: Loader {
-                        Layout.fillWidth: true
-                        active: (modelData.bannerQmlUrl || "") !== ""
-                        source: modelData.bannerQmlUrl || ""
+                Rectangle {
+                    visible: CallForgeBridgeCpp.armed
+                    Layout.fillWidth: true
+                    Layout.topMargin: visible ? Utils.getSizeWithScreenRatio(12) : 0
+                    Layout.rightMargin: visible ? Utils.getSizeWithScreenRatio(39) : 0
+                    implicitHeight: visible ? armedBannerRowNew.implicitHeight + Utils.getSizeWithScreenRatio(12) : 0
+                    radius: Utils.getSizeWithScreenRatio(6)
+                    color: DefaultStyle.success_500_main
+                    RowLayout {
+                        id: armedBannerRowNew
+                        anchors.fill: parent
+                        anchors.margins: Utils.getSizeWithScreenRatio(6)
+                        Text {
+                            Layout.fillWidth: true
+                            text: "AI armed: " + CallForgeBridgeCpp.armedScenarioName + " — dial a number"
+                            color: DefaultStyle.grey_0
+                            font.pixelSize: Utils.getSizeWithScreenRatio(12)
+                            font.weight: 600
+                            wrapMode: Text.Wrap
+                            maximumLineCount: 2
+                        }
+                        SmallButton {
+                            style: ButtonStyle.noBackground
+                            contentItem: Text {
+                                text: "Cancel"
+                                color: DefaultStyle.grey_0
+                                font.pixelSize: Utils.getSizeWithScreenRatio(11)
+                                font.weight: 600
+                            }
+                            onClicked: CallForgeBridgeCpp.disarmAICall()
+                        }
                     }
                 }
                 NewCallForm {

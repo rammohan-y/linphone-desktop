@@ -83,6 +83,39 @@ QStringList CallForgeBridge::getAgentNames() const {
 	return mAgentNames;
 }
 
+// --- Arm/Disarm ---
+
+bool CallForgeBridge::isArmed() const {
+	return mArmed;
+}
+
+int CallForgeBridge::getArmedScenarioIndex() const {
+	return mArmedScenarioIndex;
+}
+
+QString CallForgeBridge::getArmedScenarioName() const {
+	return mArmedScenarioName;
+}
+
+void CallForgeBridge::armAICall(int scenarioIndex) {
+	mArmed = true;
+	mArmedScenarioIndex = scenarioIndex;
+	auto scenarios = mScenarios.toVariantList();
+	if (scenarioIndex >= 0 && scenarioIndex < scenarios.size())
+		mArmedScenarioName = scenarios[scenarioIndex].toMap()["name"].toString();
+	else mArmedScenarioName.clear();
+	qInfo() << "[CallForgeBridge] Armed scenario:" << mArmedScenarioIndex << mArmedScenarioName;
+	emit armedChanged();
+}
+
+void CallForgeBridge::disarmAICall() {
+	mArmed = false;
+	mArmedScenarioIndex = -1;
+	mArmedScenarioName.clear();
+	qInfo() << "[CallForgeBridge] Disarmed";
+	emit armedChanged();
+}
+
 // --- Scenario CRUD ---
 
 QVariantList CallForgeBridge::getAiScenarios() const {

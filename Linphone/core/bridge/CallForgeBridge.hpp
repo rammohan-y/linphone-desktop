@@ -13,6 +13,9 @@ class CallForgeBridge : public QObject {
 
 	Q_PROPERTY(bool daemonConnected READ isDaemonConnected NOTIFY daemonConnectedChanged)
 	Q_PROPERTY(QVariantList settingsTabs READ getSettingsTabs NOTIFY settingsTabsChanged)
+	Q_PROPERTY(bool armed READ isArmed NOTIFY armedChanged)
+	Q_PROPERTY(int armedScenarioIndex READ getArmedScenarioIndex NOTIFY armedChanged)
+	Q_PROPERTY(QString armedScenarioName READ getArmedScenarioName NOTIFY armedChanged)
 
 public:
 	explicit CallForgeBridge(QObject *parent = nullptr);
@@ -20,6 +23,9 @@ public:
 
 	bool isDaemonConnected() const;
 	QVariantList getSettingsTabs() const;
+	bool isArmed() const;
+	int getArmedScenarioIndex() const;
+	QString getArmedScenarioName() const;
 
 	Q_INVOKABLE QVariantList getAiAgents() const;
 	Q_INVOKABLE void addAiAgent(const QVariantMap &agent);
@@ -33,12 +39,16 @@ public:
 	Q_INVOKABLE void updateAiScenario(int index, const QVariantMap &scenario);
 	Q_INVOKABLE void removeAiScenario(int index);
 
+	Q_INVOKABLE void armAICall(int scenarioIndex);
+	Q_INVOKABLE void disarmAICall();
+
 signals:
 	void daemonConnectedChanged();
 	void settingsTabsChanged();
 	void aiAgentsChanged();
 	void aiScenariosChanged();
 	void aiAgentTestResult(bool success, QString message);
+	void armedChanged();
 
 private slots:
 	void onSocketConnected();
@@ -61,6 +71,10 @@ private:
 	QJsonArray mScenarios;
 	QStringList mAgentNames;
 	QVariantList mSettingsTabs;
+
+	bool mArmed = false;
+	int mArmedScenarioIndex = -1;
+	QString mArmedScenarioName;
 };
 
 #endif
