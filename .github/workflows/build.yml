@@ -23,27 +23,26 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Restore submodule cache
-        id: cache-submodules
         uses: actions/cache/restore@v4
         with:
           path: |
             external/
             .git/modules/
-          key: submodules-${{ hashFiles('.gitmodules') }}
-          restore-keys: submodules-
+          key: submodules-linux-${{ hashFiles('.gitmodules') }}
+          restore-keys: submodules-linux-
 
       - name: Initialize submodules
-        if: steps.cache-submodules.outputs.cache-hit != 'true'
         run: ./init-submodules.sh
 
       - name: Save submodule cache
-        if: steps.cache-submodules.outputs.cache-hit != 'true'
+        if: always()
         uses: actions/cache/save@v4
         with:
           path: |
             external/
             .git/modules/
-          key: submodules-${{ hashFiles('.gitmodules') }}
+          key: submodules-linux-${{ hashFiles('.gitmodules') }}-${{ github.run_id }}
+          restore-keys: submodules-linux-
 
       - name: Cache apt packages
         uses: actions/cache@v4
@@ -119,7 +118,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Restore submodule cache
-        id: cache-submodules
         uses: actions/cache/restore@v4
         with:
           path: |
@@ -129,17 +127,17 @@ jobs:
           restore-keys: submodules-macos-
 
       - name: Initialize submodules
-        if: steps.cache-submodules.outputs.cache-hit != 'true'
         run: ./init-submodules.sh
 
       - name: Save submodule cache
-        if: steps.cache-submodules.outputs.cache-hit != 'true'
+        if: always()
         uses: actions/cache/save@v4
         with:
           path: |
             external/
             .git/modules/
-          key: submodules-macos-${{ hashFiles('.gitmodules') }}
+          key: submodules-macos-${{ hashFiles('.gitmodules') }}-${{ github.run_id }}
+          restore-keys: submodules-macos-
 
       - name: Install system dependencies
         run: |
