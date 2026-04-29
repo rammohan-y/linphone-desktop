@@ -3,7 +3,7 @@
 # Run from the linphone-desktop root directory.
 
 MAX_RETRIES=10
-RETRY_DELAY=5
+RETRY_DELAY=3
 ROOT_DIR="$(pwd)"
 
 init_one() {

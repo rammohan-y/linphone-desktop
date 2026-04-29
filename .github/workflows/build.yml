@@ -29,7 +29,10 @@ jobs:
 
       - name: Initialize submodules
         if: steps.cache-submodules.outputs.cache-hit != 'true'
-        run: ./init-submodules.sh
+        run: |
+          git config --global http.lowSpeedLimit 1000
+          git config --global http.lowSpeedTime 10
+          ./init-submodules.sh
 
       - name: Cache apt packages
         uses: actions/cache@v4
