@@ -33,7 +33,6 @@ jobs:
           sudo apt-get install -y \
             build-essential cmake git pkg-config \
             ninja-build nasm yasm doxygen meson autoconf libtool-bin \
-            python3-pystache \
             libgl1-mesa-dev libglu1-mesa-dev libegl1-mesa-dev \
             libx11-dev libxkbcommon-dev libxkbcommon-x11-dev libudev-dev \
             libv4l-dev libasound2-dev libpulse-dev libglew-dev libxinerama-dev \
@@ -41,6 +40,9 @@ jobs:
             libwayland-dev libdbus-1-dev
           mkdir -p ~/apt-cache
           cp /var/cache/apt/archives/*.deb ~/apt-cache/ 2>/dev/null || true
+
+      - name: Install Python modules
+        run: pip install pystache
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
