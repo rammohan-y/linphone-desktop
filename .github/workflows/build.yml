@@ -16,7 +16,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache submodules
+        id: cache-submodules
+        uses: actions/cache@v4
+        with:
+          path: |
+            external/
+            .git/modules/
+          key: submodules-${{ hashFiles('.gitmodules') }}-${{ hashFiles('**/.gitmodules') }}
+          restore-keys: submodules-
+
       - name: Initialize submodules
+        if: steps.cache-submodules.outputs.cache-hit != 'true'
         run: ./init-submodules.sh
 
       - name: Cache apt packages
