@@ -1,6 +1,7 @@
 [submodule "linphone-sdk"]
-path = external/linphone-sdk
+	path = external/linphone-sdk
 	url = https://gitlab.linphone.org/BC/public/linphone-sdk.git
+	ignore = dirty
 [submodule "external/google/gn"]
 	path = external/google/gn
 	url = https://gitlab.linphone.org/BC/public/external/gn.git
