@@ -35,12 +35,8 @@ if (GIT_EXECUTABLE AND NOT(LINPHONEAPP_VERSION))
 	)
 endif()
 
-if(NOT LINPHONEAPP_VERSION)
-	bc_compute_full_version(LINPHONEAPP_VERSION)
-endif()
-
 if (NOT(LINPHONEAPP_VERSION))
-  set(LINPHONEAPP_VERSION "6.2.0")
+  set(LINPHONEAPP_VERSION "6.1.0")
 endif ()
 
 include(${CMAKE_SOURCE_DIR}/Linphone/application_info.cmake)
