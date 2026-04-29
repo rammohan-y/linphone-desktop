@@ -29,6 +29,7 @@ jobs:
       - name: Initialize submodules
         if: steps.cache-submodules.outputs.cache-hit != 'true'
         run: |
+          git config --global http.connectTimeout 15
           git config --global http.lowSpeedLimit 1000
           git config --global http.lowSpeedTime 10
           ./init-submodules.sh
