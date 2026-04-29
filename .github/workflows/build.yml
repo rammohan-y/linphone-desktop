@@ -42,7 +42,6 @@ jobs:
             external/
             .git/modules/
           key: submodules-linux-${{ hashFiles('.gitmodules') }}-${{ github.run_id }}
-          restore-keys: submodules-linux-
 
       - name: Cache apt packages
         uses: actions/cache@v4
@@ -137,7 +136,6 @@ jobs:
             external/
             .git/modules/
           key: submodules-macos-${{ hashFiles('.gitmodules') }}-${{ github.run_id }}
-          restore-keys: submodules-macos-
 
       - name: Install system dependencies
         run: |
