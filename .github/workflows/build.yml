@@ -23,7 +23,7 @@ jobs:
           path: |
             external/
             .git/modules/
-          key: submodules-${{ hashFiles('.gitmodules') }}-${{ hashFiles('**/.gitmodules') }}
+          key: submodules-${{ hashFiles('.gitmodules') }}
           restore-keys: submodules-
 
       - name: Initialize submodules
