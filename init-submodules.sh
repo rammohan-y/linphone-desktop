@@ -6,6 +6,13 @@ MAX_RETRIES=10
 RETRY_DELAY=3
 ROOT_DIR="$(pwd)"
 
+export GIT_HTTP_CONNECT_TIMEOUT=15
+export GIT_HTTP_LOW_SPEED_LIMIT=1000
+export GIT_HTTP_LOW_SPEED_TIME=10
+git config --global http.connectTimeout 15
+git config --global http.lowSpeedLimit 1000
+git config --global http.lowSpeedTime 10
+
 init_one() {
   local repo_dir="$1"
   local sub_path="$2"
