@@ -139,7 +139,8 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          brew install cmake ninja nasm yasm doxygen meson autoconf automake libtool pkg-config
+          brew install cmake ninja nasm yasm doxygen meson autoconf automake libtool pkg-config coreutils
+          echo "$(brew --prefix coreutils)/libexec/gnubin" >> $GITHUB_PATH
 
       - uses: actions/setup-python@v5
         with:
