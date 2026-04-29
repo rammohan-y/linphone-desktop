@@ -19,16 +19,16 @@ jobs:
       - name: Initialize submodules
         run: ./init-submodules.sh
 
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+      - name: Cache apt packages
+        uses: actions/cache@v4
         with:
-          version: '6.10.0'
-          target: 'desktop'
-          arch: 'linux_gcc_64'
-          modules: 'qtshadertools qtwebsockets qtnetworkauth'
+          path: ~/apt-cache
+          key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/build.yml') }}
+          restore-keys: apt-${{ runner.os }}-
 
       - name: Install system dependencies
         run: |
+          sudo cp -r ~/apt-cache/*.deb /var/cache/apt/archives/ 2>/dev/null || true
           sudo apt-get update
           sudo apt-get install -y \
             build-essential cmake git pkg-config \
@@ -39,6 +39,17 @@ jobs:
             libv4l-dev libasound2-dev libpulse-dev libglew-dev libxinerama-dev \
             libxrandr-dev libxcursor-dev libxi-dev libxext-dev libxfixes-dev \
             libwayland-dev libdbus-1-dev
+          mkdir -p ~/apt-cache
+          cp /var/cache/apt/archives/*.deb ~/apt-cache/ 2>/dev/null || true
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.10.0'
+          target: 'desktop'
+          arch: 'linux_gcc_64'
+          modules: 'qtshadertools qtwebsockets qtnetworkauth'
+          cache: true
 
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1
