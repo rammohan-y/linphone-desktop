@@ -106,3 +106,83 @@ jobs:
         with:
           name: callforge-linux
           path: build/OUTPUT/
+
+  build-macos:
+    name: macOS
+    runs-on: macos-14
+    timeout-minutes: 180
+
+    env:
+      BUILD_TYPE: RelWithDebInfo
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore submodule cache
+        id: cache-submodules
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            external/
+            .git/modules/
+          key: submodules-macos-${{ hashFiles('.gitmodules') }}
+          restore-keys: submodules-macos-
+
+      - name: Initialize submodules
+        if: steps.cache-submodules.outputs.cache-hit != 'true'
+        run: ./init-submodules.sh
+
+      - name: Save submodule cache
+        if: steps.cache-submodules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            external/
+            .git/modules/
+          key: submodules-macos-${{ hashFiles('.gitmodules') }}
+
+      - name: Install system dependencies
+        run: |
+          brew install cmake ninja nasm yasm doxygen meson autoconf automake libtool pkg-config
+
+      - name: Install Python modules
+        run: |
+          python3 -m pip install --break-system-packages pystache six
+          python3 -c "import pystache; import six; print('Python modules OK')"
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.10.0'
+          target: 'desktop'
+          arch: 'clang_64'
+          modules: 'qtshadertools qtwebsockets qtnetworkauth'
+          cache: true
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: macos-${{ github.ref }}
+          restore-keys: macos-
+
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.3 \
+            -DCMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.ncpu) \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DENABLE_PQCRYPTO=OFF
+
+      - name: Build
+        run: cmake --build build --parallel $(sysctl -n hw.ncpu) --config ${{ env.BUILD_TYPE }}
+
+      - name: Install
+        run: cmake --install build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: callforge-macos
+          path: build/OUTPUT/
