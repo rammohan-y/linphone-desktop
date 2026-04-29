@@ -141,13 +141,15 @@ jobs:
         run: |
           brew install cmake ninja nasm yasm doxygen meson autoconf automake libtool pkg-config
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install Python modules
         run: |
-          for py in $(find /Users/runner/hostedtoolcache/Python -name "python3*" -type f 2>/dev/null; which python3); do
-            echo "Installing pystache/six for: $py"
-            "$py" -m pip install --break-system-packages --force-reinstall pystache six || true
-          done
+          python3 -m pip install --break-system-packages --force-reinstall pystache six
           python3 -c "import pystache; import six; print('Python modules OK')"
+          which python3
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
