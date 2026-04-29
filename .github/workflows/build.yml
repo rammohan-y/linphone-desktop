@@ -16,16 +16,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache submodules
+      - name: Restore submodule cache
         id: cache-submodules
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             external/
             .git/modules/
           key: submodules-${{ hashFiles('.gitmodules') }}
           restore-keys: submodules-
-          save-always: true
 
       - name: Initialize submodules
         if: steps.cache-submodules.outputs.cache-hit != 'true'
@@ -33,6 +32,15 @@ jobs:
           git config --global http.lowSpeedLimit 1000
           git config --global http.lowSpeedTime 10
           ./init-submodules.sh
+
+      - name: Save submodule cache
+        if: steps.cache-submodules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            external/
+            .git/modules/
+          key: submodules-${{ hashFiles('.gitmodules') }}
 
       - name: Cache apt packages
         uses: actions/cache@v4
