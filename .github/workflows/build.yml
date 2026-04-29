@@ -176,7 +176,8 @@ jobs:
             -DCMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.ncpu) \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-            -DENABLE_PQCRYPTO=OFF
+            -DENABLE_PQCRYPTO=OFF \
+            -DENABLE_OPENH264=OFF
 
       - name: Build
         run: cmake --build build --parallel $(sysctl -n hw.ncpu) --config ${{ env.BUILD_TYPE }}
