@@ -53,7 +53,9 @@ jobs:
           cp /var/cache/apt/archives/*.deb ~/apt-cache/ 2>/dev/null || true
 
       - name: Install Python modules
-        run: python3 -m pip install pystache six
+        run: |
+          python3 -m pip install --force-reinstall pystache six
+          python3 -c "import pystache; import six; print('Python modules OK')"
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
