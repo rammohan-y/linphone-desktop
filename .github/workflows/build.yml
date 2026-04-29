@@ -53,7 +53,7 @@ jobs:
           cp /var/cache/apt/archives/*.deb ~/apt-cache/ 2>/dev/null || true
 
       - name: Install Python modules
-        run: pip install pystache
+        run: pip install pystache six
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
