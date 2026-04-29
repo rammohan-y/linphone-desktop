@@ -25,6 +25,7 @@ jobs:
             .git/modules/
           key: submodules-${{ hashFiles('.gitmodules') }}
           restore-keys: submodules-
+          save-always: true
 
       - name: Initialize submodules
         if: steps.cache-submodules.outputs.cache-hit != 'true'
