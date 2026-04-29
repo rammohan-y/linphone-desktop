@@ -50,8 +50,11 @@ linphone.spec
 
 !.clang-format
 !.gitignore
+!.github/
+!.github/**
 !.gitlab-ci*
 !.gitmodules
+!build.sh
 
 # VSCode
 linphone60*.log
