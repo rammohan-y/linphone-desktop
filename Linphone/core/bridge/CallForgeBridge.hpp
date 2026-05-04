@@ -53,6 +53,7 @@ public:
 	Q_INVOKABLE void disarmAICall();
 	Q_INVOKABLE void startAICall();
 	Q_INVOKABLE void stopAICall();
+	Q_INVOKABLE void sendDaemonCommand(const QString &cmd);
 
 signals:
 	void daemonConnectedChanged();

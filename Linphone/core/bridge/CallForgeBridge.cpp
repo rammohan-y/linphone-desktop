@@ -193,6 +193,10 @@ void CallForgeBridge::stopAICall() {
 	sendMessage({{"cmd", "stopAICall"}});
 }
 
+void CallForgeBridge::sendDaemonCommand(const QString &cmd) {
+	sendMessage({{"cmd", cmd}});
+}
+
 // --- Scenario CRUD ---
 
 QVariantList CallForgeBridge::getAiScenarios() const {
