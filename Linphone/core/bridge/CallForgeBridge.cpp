@@ -297,6 +297,8 @@ void CallForgeBridge::onReadyRead() {
 			handleMessage(doc.object());
 		}
 	}
+
+	if (mReadBuffer.isEmpty() && mReadBuffer.capacity() > 4096) mReadBuffer.squeeze();
 }
 
 bool CallForgeBridge::sendMessage(const QJsonObject &msg) {
